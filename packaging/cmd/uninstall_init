@@ -1,0 +1,22 @@
+#!/bin/bash
+# 卸载前：停止服务并把数据库快照备份到共享目录
+set -u
+
+APP_NAME="ship-pms"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/${APP_NAME}/var}"
+DB_FILE="${VAR_DIR}/data/pms.db"
+SHARE_DIR="${TRIM_DATA_SHARE_PATHS%%:*}"
+[ -n "$SHARE_DIR" ] || SHARE_DIR="/var/apps/${APP_NAME}/share"
+
+CMD_DIR="/var/apps/${TRIM_APPNAME:-$APP_NAME}/cmd"
+[ -f "$CMD_DIR/main" ] || CMD_DIR="${TRIM_APPDEST%/}/../cmd"
+[ -f "$CMD_DIR/main" ] && bash "$CMD_DIR/main" stop
+
+if [ -f "$DB_FILE" ]; then
+  mkdir -p "$SHARE_DIR/uninstall-backup" 2>/dev/null || true
+  if [ -d "$SHARE_DIR/uninstall-backup" ]; then
+    cp "$DB_FILE" "$SHARE_DIR/uninstall-backup/pms-uninstall-$(date +%Y%m%d-%H%M%S).db" 2>/dev/null || true
+  fi
+fi
+
+exit 0

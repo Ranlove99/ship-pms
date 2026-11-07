@@ -1,0 +1,22 @@
+#!/bin/bash
+# 升级后：迁移由应用启动时自动执行，这里只负责重启并确认
+set -u
+
+APP_NAME="ship-pms"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/${APP_NAME}/var}"
+LOG_FILE="${VAR_DIR}/app.log"
+
+CMD_DIR="/var/apps/${TRIM_APPNAME:-$APP_NAME}/cmd"
+[ -f "$CMD_DIR/main" ] || CMD_DIR="${TRIM_APPDEST%/}/../cmd"
+
+if [ -f "$CMD_DIR/main" ]; then
+  bash "$CMD_DIR/main" start
+  if [ $? -ne 0 ]; then
+    echo "升级后启动失败，数据库已备份在 $VAR_DIR/backups，可回滚到上一版本。" \
+      > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+    exit 1
+  fi
+fi
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') - upgraded to ${TRIM_APPVER:-unknown}" >> "$LOG_FILE" 2>/dev/null || true
+exit 0

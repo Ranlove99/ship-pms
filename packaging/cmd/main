@@ -1,0 +1,143 @@
+#!/bin/bash
+# ============================================================
+# 船舶 PMS · 运行控制
+# 用法: main start|stop|status
+#   status 退出码：0=运行中，3=未运行
+# ============================================================
+set -u
+
+APP_NAME="ship-pms"
+APP_MODULE="wsgi.py"
+READY_TIMEOUT=45
+
+APP_DIR="${TRIM_APPDEST:-/var/apps/${APP_NAME}/target}"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/${APP_NAME}/var}"
+ETC_DIR="${TRIM_PKGETC:-/var/apps/${APP_NAME}/etc}"
+PID_FILE="${VAR_DIR}/app.pid"
+LOG_FILE="${VAR_DIR}/app.log"
+SOCKET_FILE="${APP_DIR}/app.sock"
+
+PYTHON_BIN=""
+for P in /var/apps/python312/target/bin /usr/local/bin /usr/bin; do
+  if [ -x "$P/python3" ]; then PYTHON_BIN="$P/python3"; break; fi
+done
+if [ -z "$PYTHON_BIN" ]; then
+  PYTHON_BIN="$(command -v python3 2>/dev/null || true)"
+fi
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+fail() {
+  echo "$1" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+  log_msg "ERROR: $1"
+  exit 1
+}
+
+check_process() {
+  kill -0 "$1" 2>/dev/null
+}
+
+proc_is_app() {
+  local pid="$1"
+  [ -n "$pid" ] || return 1
+  check_process "$pid" || return 1
+  tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "$APP_MODULE"
+}
+
+health_ok() {
+  [ -S "$SOCKET_FILE" ] || return 1
+  local code
+  code="$(curl -s --unix-socket "$SOCKET_FILE" --max-time 3 -o /dev/null \
+          -w '%{http_code}' http://localhost/api/v1/health 2>/dev/null || echo 000)"
+  [ "$code" = "200" ]
+}
+
+status_app() {
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    if proc_is_app "$pid"; then
+      return 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+  return 1
+}
+
+start_app() {
+  if status_app; then
+    return 0
+  fi
+  [ -n "$PYTHON_BIN" ] || fail "未找到 python3 运行时，请确认 python312 应用已安装"
+  [ -f "$APP_DIR/wsgi.py" ] || fail "应用文件不完整：$APP_DIR/wsgi.py 缺失"
+
+  mkdir -p "$VAR_DIR" "$ETC_DIR" || fail "无法创建数据目录：$VAR_DIR"
+  rm -f "$SOCKET_FILE"
+
+  log_msg "starting $APP_NAME with $PYTHON_BIN"
+  (
+    cd "$APP_DIR" || exit 1
+    export PYTHONPATH="$APP_DIR/vendor:$APP_DIR"
+    exec nohup "$PYTHON_BIN" "$APP_MODULE" >> "$LOG_FILE" 2>&1
+  ) &
+  echo "$!" > "$PID_FILE"
+
+  local i=0
+  while [ $i -lt $READY_TIMEOUT ]; do
+    if ! status_app; then
+      break
+    fi
+    if health_ok; then
+      log_msg "ready"
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+
+  if status_app; then
+    log_msg "start pending: process alive, readiness not confirmed"
+    return 0
+  fi
+  tail -n 20 "$LOG_FILE" >> "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+  fail "船舶 PMS 启动失败，详见 $LOG_FILE"
+}
+
+stop_app() {
+  log_msg "stopping $APP_NAME"
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    if [ -n "$pid" ] && check_process "$pid"; then
+      kill -TERM "$pid" 2>/dev/null || true
+      local count=0
+      while check_process "$pid" && [ $count -lt 20 ]; do
+        sleep 1
+        count=$((count + 1))
+      done
+      if check_process "$pid"; then
+        log_msg "force kill"
+        kill -KILL "$pid" 2>/dev/null || true
+        sleep 1
+      fi
+    fi
+    rm -f "$PID_FILE"
+  fi
+  rm -f "$SOCKET_FILE"
+  return 0
+}
+
+case "${1:-}" in
+  start)  start_app ;;
+  stop)   stop_app ;;
+  status)
+    if status_app; then exit 0; fi
+    exit 3
+    ;;
+  *)
+    echo "Usage: $0 start|stop|status" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+    exit 1
+    ;;
+esac

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="app-base" content="{{ url_for('pages.index') }}">
+<title>登录 · 船舶 PMS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="4" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M9 26h22l-3 5H12l-3-5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M20 8v18" stroke="currentColor" class="accent-line" stroke-width="1.8"/>
+        <path d="M20 9h7l-2 4 2 4h-7" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M12 31h16" stroke="currentColor" class="accent-line" stroke-width="1.6"/>
+      </svg>
+      <div>
+        <h1>船舶 PMS</h1>
+        <p class="sub">计划维护与合规记录</p>
+      </div>
+    </div>
+
+    <div class="err" id="err"></div>
+
+    <div class="field">
+      <label for="username">账号</label>
+      <input type="text" id="username" name="username" autocomplete="username" autofocus>
+    </div>
+    <div class="field">
+      <label for="password">密码</label>
+      <input type="password" id="password" name="password" autocomplete="current-password">
+    </div>
+    <button class="btn primary block" id="loginBtn" style="margin-top:6px">登录</button>
+
+    <div class="login-note">
+      从飞牛应用中心入口打开时，系统自动识别 NAS 账号，无需在此登录。<br>
+      本页用于本机直连或未接入网关时的本地账号登录。
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+(function () {
+  const btn = document.getElementById("loginBtn");
+  const err = document.getElementById("err");
+
+  async function submit() {
+    err.style.display = "none";
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    if (!username || !password) {
+      err.textContent = "请输入账号与密码";
+      err.style.display = "block";
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "登录中…";
+    try {
+      await PMS.api("api/v1/auth/login", "POST", { username: username, password: password });
+      location.href = PMS.url("");
+    } catch (e) {
+      err.textContent = e.message || "登录失败";
+      err.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "登录";
+    }
+  }
+
+  btn.addEventListener("click", submit);
+  document.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
+})();
+</script>
+</body>
+</html>

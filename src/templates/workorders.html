@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}工单 · 船舶 PMS{% endblock %}
+{% block heading %}工单{% endblock %}
+{% block subheading %}共 {{ items|length }} 条{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>工单列表</h2>
+    <p>从派工到验收的完整闭环。验收后写入设备历史、顺延计划、缺陷转「已修复」。</p>
+  </div>
+  <div class="page-actions">
+    <div class="segmented">
+      <a href="{{ url_for('pages.workorders') }}" class="{{ 'on' if not status }}">全部</a>
+      <a href="{{ url_for('pages.workorders', status='open') }}" class="{{ 'on' if status == 'open' }}">待开始</a>
+      <a href="{{ url_for('pages.workorders', status='in_progress') }}" class="{{ 'on' if status == 'in_progress' }}">执行中</a>
+      <a href="{{ url_for('pages.workorders', status='done') }}" class="{{ 'on' if status == 'done' }}">待验收</a>
+      <a href="{{ url_for('pages.workorders', status='verified') }}" class="{{ 'on' if status == 'verified' }}">已验收</a>
+    </div>
+    <button class="btn primary" data-action="wo-new">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>新建工单
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  {% if items %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>工单号</th><th>设备</th><th>内容</th><th>类型</th>
+          <th>优先级</th><th>状态</th><th>到期</th><th>完成</th><th style="text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in items %}
+        <tr>
+          <td class="mono"><a href="{{ url_for('pages.workorder_detail', wo_id=w.id) }}">{{ w.no }}</a></td>
+          <td>
+            {{ w.asset_name }}
+            <span class="sub">{{ w.asset_code }}</span>
+          </td>
+          <td><a href="{{ url_for('pages.workorder_detail', wo_id=w.id) }}">{{ w.title }}</a></td>
+          <td>{{ w.type_label }}</td>
+          <td>
+            <span class="badge {{ 'danger' if w.priority == 'critical' else ('warn' if w.priority == 'high' else 'neutral') }}">{{ w.priority_label }}</span>
+          </td>
+          <td>
+            <span class="badge {{ 'ok' if w.status == 'verified' else ('info' if w.status in ('in_progress','done') else ('neutral' if w.status == 'cancelled' else 'accent')) }}">{{ w.status_label }}</span>
+          </td>
+          <td class="mono">{{ w.due_at or '—' }}</td>
+          <td class="mono">{{ (w.completed_at or '')[:10] or '—' }}</td>
+          <td style="text-align:right;white-space:nowrap">
+            {% if w.status == 'open' %}
+              <button class="btn sm" data-action="wo-start" data-id="{{ w.id }}">开始</button>
+            {% elif w.status == 'in_progress' %}
+              <button class="btn sm" data-action="wo-complete" data-id="{{ w.id }}">完成</button>
+            {% elif w.status == 'done' %}
+              <button class="btn sm primary" data-action="wo-verify" data-id="{{ w.id }}">验收</button>
+            {% else %}
+              <a class="btn ghost sm" href="{{ url_for('pages.workorder_detail', wo_id=w.id) }}">查看</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <div class="empty">
+      <b>当前筛选下没有工单</b>
+      去「到期清单」批量派工，或在右上角新建一条纠正性工单。
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script type="application/json" id="assetsData">[{% for a in assets %}{"id":{{ a.id }},"label":{{ (a.code ~ ' · ' ~ a.name)|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  PMS.actions["wo-new"] = function () {
+    const assets = JSON.parse(document.getElementById("assetsData").textContent);
+    const body = '<div class="form-grid">' +
+      PMS.select("设备", "asset_id", assets, "id", "label", "", true) +
+      '<div class="field"><label>类型</label><select name="type">' +
+      '<option value="corrective">纠正性</option><option value="inspection">检查</option>' +
+      '<option value="planned">计划维护</option></select></div>' +
+      '<div class="field"><label>优先级</label><select name="priority">' +
+      '<option value="normal">普通</option><option value="high">高</option>' +
+      '<option value="critical">紧急</option><option value="low">低</option></select></div>' +
+      PMS.field("内容", "title", "", { required: true, ph: "例：3 号辅机滑油压力低排查" }) +
+      PMS.field("到期日", "due_at", "", { type: "date" }) +
+      PMS.field("说明", "description", "", { type: "textarea", full: true }) +
+      PMS.field("检查项（每行一项，可留空）", "checklist", "", { type: "textarea", full: true }) +
+      '</div>';
+    PMS.modal("新建工单", body,
+      '<button class="btn" data-close>取消</button><button class="btn primary" id="woSave">创建</button>', { wide: true });
+    document.getElementById("woSave").onclick = async function () {
+      const data = PMS.formValues(PMS.currentModal.querySelector(".modal-body"));
+      data.checklist = (data.checklist || "").split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+      const res = await PMS.run(function () { return PMS.api("api/v1/workorders", "POST", data); }, "工单已创建");
+      if (res && res.id) location.href = PMS.url("workorders/" + res.id);
+    };
+  };
+})();
+</script>
+{% endblock %}

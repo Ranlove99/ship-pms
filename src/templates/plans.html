@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}维护计划 · 船舶 PMS{% endblock %}
+{% block heading %}维护计划{% endblock %}
+{% block subheading %}共 {{ items|length }} 条{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>计划库</h2>
+    <p>周期来自厂家手册与行业通行值，装船后须由轮机长按实船手册逐条核对。</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn primary" data-action="plan-new">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>新建计划
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  {% if items %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>设备</th><th>计划</th><th>周期</th><th>上次完成</th>
+          <th>下次到期</th><th>状态</th><th>依据</th><th style="text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in items %}
+        <tr class="{{ 'row-danger' if p.status == 'overdue' else ('row-warn' if p.status == 'due' else '') }}">
+          <td>
+            <strong>{{ p.asset_name }}</strong>
+            <span class="sub">{{ p.asset_code }} · {{ p.criticality }} 级</span>
+          </td>
+          <td>
+            {{ p.title }}
+            <span class="sub">{{ p.checklist|length }} 项检查{% if p.est_hours %} · 约 {{ p.est_hours }} h{% endif %}</span>
+          </td>
+          <td class="mono">
+            {% if p.interval_days %}{{ p.interval_days }} d{% endif %}
+            {% if p.interval_days and p.interval_hours %} / {% endif %}
+            {% if p.interval_hours %}{{ '%.0f'|format(p.interval_hours) }} h{% endif %}
+            {% if not p.interval_days and not p.interval_hours %}—{% endif %}
+          </td>
+          <td class="mono">
+            {{ p.last_done_at or '—' }}
+            {% if p.last_done_hours %}<span class="sub">{{ '%.0f'|format(p.last_done_hours) }} h</span>{% endif %}
+          </td>
+          <td class="mono">
+            {{ p.next_due_at or '未设基准' }}
+            {% if p.next_due_hours %}<span class="sub">{{ '%.0f'|format(p.next_due_hours) }} h</span>{% endif %}
+          </td>
+          <td>
+            {% if not p.active %}
+              <span class="badge neutral">已停用</span>
+            {% elif p.status == 'overdue' %}
+              <span class="badge danger">{{ p.state_label }}</span>
+            {% elif p.status == 'due' %}
+              <span class="badge warn">{{ p.state_label }}</span>
+            {% elif p.status == 'idle' %}
+              <span class="badge neutral">未设基准</span>
+            {% else %}
+              <span class="badge ok">{{ p.state_label }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ p.regulation_ref or '—' }}</td>
+          <td style="text-align:right">
+            <button class="btn ghost sm" data-action="plan-toggle" data-id="{{ p.id }}" data-active="{{ p.active }}">
+              {{ '停用' if p.active else '启用' }}
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body"><div class="empty"><b>还没有维护计划</b>新建第一条计划，或从模板导入。</div></div>
+  {% endif %}
+</div>
+
+<div class="notice" style="margin-top:14px">
+  <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+  <div>
+    <b>「未设基准」是什么意思</b>
+    计划尚未执行过，系统不知道上次完成时点与小时数。首次完成工单并验收后，系统会自动写入基准并计算下次到期。
+    若要从今天起算，请在新建计划时填写周期，首次到期会按安装日推算。
+  </div>
+</div>
+
+<script type="application/json" id="assetsData">[{% for a in assets %}{"id":{{ a.id }},"label":{{ (a.code ~ ' · ' ~ a.name)|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}库存单据 · 船舶 PMS{% endblock %}
+{% block heading %}库存单据{% endblock %}
+{% block subheading %}入库 / 出库 / 盘库 · 单据化管理{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>单据中心</h2>
+    <p>库存变动一律开单：草稿可编辑，过账后锁定并写入库存流水。已过账单据不可修改，纠正请开新单据。</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn" data-action="stocktake-new">
+      <svg class="icon icon-sm"><use href="#i-doc-check"/></svg>新建盘点
+    </button>
+    <button class="btn" data-action="doc-new" data-type="out">
+      <svg class="icon icon-sm"><use href="#i-doc-out"/></svg>新建出库单
+    </button>
+    <button class="btn primary" data-action="doc-new" data-type="in">
+      <svg class="icon icon-sm"><use href="#i-doc-in"/></svg>新建入库单
+    </button>
+  </div>
+</div>
+
+<div class="segmented section-gap" style="display:inline-flex;flex-wrap:wrap">
+  <a href="{{ url_for('pages.stock_docs') }}" class="{{ 'on' if not doc_type }}">全部</a>
+  <a href="{{ url_for('pages.stock_docs', type='in') }}" class="{{ 'on' if doc_type == 'in' }}">入库单</a>
+  <a href="{{ url_for('pages.stock_docs', type='out') }}" class="{{ 'on' if doc_type == 'out' }}">出库单</a>
+  <a href="{{ url_for('pages.stock_docs', type='adjust') }}" class="{{ 'on' if doc_type == 'adjust' }}">盘库单</a>
+</div>
+
+<div class="card section-gap">
+  <div class="card-head">
+    <svg class="icon"><use href="#i-file"/></svg>
+    <h3>单据列表</h3>
+    <form method="get" style="margin-left:auto;display:flex;gap:6px">
+      {% if doc_type %}<input type="hidden" name="type" value="{{ doc_type }}">{% endif %}
+      <input type="search" name="q" value="{{ q }}" placeholder="单号 / 往来方 / 引用单号" style="width:210px">
+      <button class="btn sm" type="submit"><svg class="icon icon-sm"><use href="#i-search"/></svg>搜索</button>
+    </form>
+  </div>
+  {% if items %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>单号</th><th>业务日期</th><th>类型</th><th>往来方</th><th>引用单号</th>
+          <th style="text-align:right">行数</th><th style="text-align:right">总数量</th>
+          <th style="text-align:right">金额</th><th>状态</th><th style="text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in items %}
+        <tr>
+          <td class="mono"><a href="{{ url_for('pages.stock_doc_detail', doc_id=d.id) }}">{{ d.no }}</a></td>
+          <td class="mono">{{ d.doc_date }}</td>
+          <td>
+            <span class="badge {{ 'ok' if d.type == 'in' else ('warn' if d.type == 'out' else 'info') }}">
+              {{ d.type_label }}
+            </span>
+          </td>
+          <td>{{ d.party or '—' }}</td>
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ d.ref_no or '—' }}</td>
+          <td class="mono" style="text-align:right">{{ d.line_count }}</td>
+          <td class="mono" style="text-align:right">{{ d.total_qty|num }}</td>
+          <td class="mono" style="text-align:right">{{ d.total_amount|money }}</td>
+          <td>
+            <span class="badge {{ 'ok' if d.status == 'posted' else ('neutral' if d.status == 'cancelled' else 'warn') }}">
+              {{ d.status_label }}
+            </span>
+          </td>
+          <td style="text-align:right;white-space:nowrap">
+            <a class="btn ghost sm" href="{{ url_for('pages.stock_doc_detail', doc_id=d.id) }}">详情</a>
+            {% if d.status == 'draft' %}
+            <button class="btn ghost sm" data-action="doc-post" data-id="{{ d.id }}" data-no="{{ d.no }}">过账</button>
+            <button class="btn ghost sm" data-action="doc-cancel" data-id="{{ d.id }}" data-no="{{ d.no }}">取消</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <div class="empty">
+      <b>暂无单据</b>
+      点击右上角「新建入库单 / 出库单 / 盘点」开始；到货开入库单，领用开出库单，定期盘库开盘库单。
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script type="application/json" id="partsData">{{ parts|tojson }}</script>
+<script type="application/json" id="openWosData">{{ open_wos|tojson }}</script>
+{% endblock %}

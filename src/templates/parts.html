@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}备件库存 · 船舶 PMS{% endblock %}
+{% block heading %}备件库存{% endblock %}
+{% block subheading %}预警 {{ alert_count }} 项 · 库存金额 ¥{{ value.amount|money }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>备件台账</h2>
+    <p>可用量 = 在库 − 预留。低于最低库存即预警；AMSA 在 PSC 中会核查关键备件的可得性。库存变动请通过<a href="{{ url_for('pages.stock_docs') }}">库存单据</a>操作。</p>
+  </div>
+  <div class="page-actions">
+    <form method="get" style="display:flex;gap:6px">
+      <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="编码 / 名称 / 规格" style="width:200px">
+      <button class="btn" type="submit"><svg class="icon icon-sm"><use href="#i-search"/></svg>搜索</button>
+    </form>
+    <a class="btn" href="{{ url_for('pages.stock_docs') }}">
+      <svg class="icon icon-sm"><use href="#i-file"/></svg>库存单据
+    </a>
+    <button class="btn primary" data-action="part-new">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>新增备件
+    </button>
+  </div>
+</div>
+
+{% set alerts = items | selectattr('below_min') | list %}
+{% set expiring_ids = expiring | map(attribute='id') | list %}
+<div class="grid grid-5 section-gap">
+  <div class="kpi">
+    <div class="label">备件种类</div>
+    <div class="value">{{ items|length }}</div>
+    <div class="meta">在册条目</div>
+  </div>
+  <div class="kpi {{ 'danger' if alert_count else 'ok' }}">
+    <div class="label">低于最低库存</div>
+    <div class="value">{{ alert_count }}</div>
+    <div class="meta">需补货</div>
+  </div>
+  <div class="kpi warn">
+    <div class="label">关键备件缺货</div>
+    <div class="value">{{ alerts | selectattr('critical') | list | length }}</div>
+    <div class="meta">影响安全运行</div>
+  </div>
+  <div class="kpi">
+    <div class="label">在库总量</div>
+    <div class="value">{{ '%.0f'|format(items | sum(attribute='on_hand')) }}<small>件</small></div>
+    <div class="meta">按在库数量合计</div>
+  </div>
+  <div class="kpi">
+    <div class="label">库存金额</div>
+    <div class="value">¥{{ value.amount|money }}</div>
+    <div class="meta">在库 × 单价合计</div>
+  </div>
+</div>
+
+{% if alerts %}
+<div class="notice danger">
+  <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+  <div>
+    <b>{{ alerts|length }} 项备件低于最低库存</b>
+    <ul class="notice-list">
+      {% for a in alerts %}
+      <li>
+        {{ a.name }}
+        <span class="tag-qty">可用 {{ a.available|num }} / 最低 {{ a.min_qty|num }} {{ a.unit }}</span>
+        {% if a.critical %}<span class="badge danger">关键</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% if expiring %}
+<div class="notice warn section-gap">
+  <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+  <div>
+    <b>{{ expiring|length }} 项备件保质期临近或已过</b>
+    <ul class="notice-list">
+      {% for e in expiring %}
+      <li>
+        {{ e.name }}<span class="sub">{{ e.code }}</span>
+        <span class="tag-qty">到期 {{ e.expiry_date }}</span>
+        <span class="badge {{ 'danger' if e.days_left < 0 else 'warn' }}">
+          {{ '已过期 ' ~ (-e.days_left) ~ ' 天' if e.days_left < 0 else '剩余 ' ~ e.days_left ~ ' 天' }}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% if reorder %}
+<div class="card section-gap">
+  <div class="card-head">
+    <svg class="icon"><use href="#i-truck"/></svg>
+    <h3>补货建议</h3>
+    <span class="hint">建议量 = max(2×最低 − 可用, 2×近 90 天出库量)，关键备件优先</span>
+    <a class="btn ghost sm" href="{{ url_for('reports_api.reorder_csv') }}" style="margin-left:auto">
+      <svg class="icon icon-sm"><use href="#i-download"/></svg>导出采购清单
+    </a>
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>编码</th><th>名称</th><th style="text-align:right">可用</th><th style="text-align:right">最低</th>
+          <th style="text-align:right">近 90 天出库</th><th style="text-align:right">建议采购量</th><th>位置</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reorder %}
+        <tr class="{{ 'row-danger' if r.critical else 'row-warn' }}">
+          <td class="mono">{{ r.code }}</td>
+          <td>{{ r.name }}{% if r.critical %}<span class="badge accent" style="margin-left:4px">关键</span>{% endif %}</td>
+          <td class="mono" style="text-align:right">{{ r.available|num }}</td>
+          <td class="mono" style="text-align:right">{{ r.min_qty|num }}</td>
+          <td class="mono" style="text-align:right">{{ r.used_days|num }}</td>
+          <td class="mono" style="text-align:right"><strong>{{ r.suggested|num }}</strong> <span style="color:var(--ink-300)">{{ r.unit }}</span></td>
+          <td style="font-size:12px;color:var(--ink-500)">{{ r.location or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card section-gap">
+  <div class="card-head">
+    <h3>库存清单</h3>
+    <span class="hint">点击操作列入库、出库、盘点或编辑档案</span>
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>编码</th><th>名称</th><th>规格</th><th>位置</th><th>保质期</th>
+          <th style="text-align:right">在库</th><th style="text-align:right">预留</th>
+          <th style="text-align:right">可用</th><th style="text-align:right">最低</th>
+          <th>状态</th><th style="text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in items %}
+        <tr class="{{ 'row-danger' if p.below_min and p.critical else ('row-warn' if p.below_min else '') }}">
+          <td class="mono">{{ p.code }}</td>
+          <td>
+            {{ p.name }}
+            {% if p.critical %}<span class="badge accent" style="margin-left:4px">关键</span>{% endif %}
+            {% if p.maker_part_no %}<span class="sub">厂家件号 {{ p.maker_part_no }}</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--ink-500)">{{ p.spec or '—' }}</td>
+          <td style="font-size:12px;color:var(--ink-500)">{{ p.location or '—' }}</td>
+          <td style="font-size:12px;white-space:nowrap">
+            {% if p.expiry_date %}
+              {% if p.id in expiring_ids %}
+              <span class="badge danger">{{ p.expiry_date }}</span>
+              {% else %}
+              <span style="color:var(--ink-500)">{{ p.expiry_date }}</span>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="mono" style="text-align:right">{{ p.on_hand|num }}</td>
+          <td class="mono" style="text-align:right">{{ p.reserved|num }}</td>
+          <td class="mono" style="text-align:right"><strong>{{ p.available|num }}</strong> <span style="color:var(--ink-300)">{{ p.unit }}</span></td>
+          <td class="mono" style="text-align:right">{{ p.min_qty|num }}</td>
+          <td>
+            {% if p.below_min %}
+              <span class="badge {{ 'danger' if p.critical else 'warn' }}">需补货</span>
+            {% else %}
+              <span class="badge ok">充足</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn ghost sm" data-action="part-move" data-id="{{ p.id }}" data-type="in" data-name="{{ p.name }}">入库</button>
+            <button class="btn ghost sm" data-action="part-move" data-id="{{ p.id }}" data-type="out" data-name="{{ p.name }}">出库</button>
+            <button class="btn ghost sm" data-action="part-move" data-id="{{ p.id }}" data-type="adjust" data-name="{{ p.name }}" data-onhand="{{ p.on_hand }}">盘点</button>
+            <button class="btn ghost sm" data-action="part-edit" data-id="{{ p.id }}">编辑</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if consumption %}
+<div class="card">
+  <div class="card-head">
+    <svg class="icon"><use href="#i-chart"/></svg>
+    <h3>消耗分析</h3>
+    <span class="hint">近 90 天工单领用出库 Top 10</span>
+    <a class="btn ghost sm" href="{{ url_for('reports_api.consumption_csv') }}" style="margin-left:auto">
+      <svg class="icon icon-sm"><use href="#i-download"/></svg>导出
+    </a>
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>备件</th><th style="text-align:right">出库量</th><th style="text-align:right">领用次数</th></tr>
+      </thead>
+      <tbody>
+        {% for c in consumption %}
+        <tr>
+          <td>{{ c.name }}<span class="sub">{{ c.code }}</span></td>
+          <td class="mono" style="text-align:right">{{ c.qty|num }} <span style="color:var(--ink-300)">{{ c.unit }}</span></td>
+          <td class="mono" style="text-align:right">{{ c.times }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card section-gap">
+  <div class="card-head">
+    <svg class="icon"><use href="#i-refresh"/></svg>
+    <h3>最近出入库</h3>
+    <span class="hint">只追加，历史不可修改</span>
+    <a class="btn ghost sm" href="{{ url_for('reports_api.moves_csv') }}" style="margin-left:auto">
+      <svg class="icon icon-sm"><use href="#i-download"/></svg>导出台账
+    </a>
+  </div>
+  {% if moves %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead><tr><th>时间</th><th>备件</th><th>动作</th><th style="text-align:right">数量</th><th>单据</th><th>操作人</th></tr></thead>
+      <tbody>
+        {% for m in moves %}
+        <tr>
+          <td class="mono">{{ m.at|dt }}</td>
+          <td>{{ m.part_name }}<span class="sub">{{ m.part_code }}</span></td>
+          <td>
+            <span class="badge {{ 'ok' if m.type == 'in' else ('neutral' if m.type in ('reserve','release') else 'warn') }}">{{ m.type_label }}</span>
+          </td>
+          <td class="mono" style="text-align:right">{{ m.qty|num }} {{ m.unit }}</td>
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ m.ref_no or '—' }}</td>
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ m.operator_name or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body"><div class="empty">暂无出入库记录</div></div>
+  {% endif %}
+</div>
+
+<script type="application/json" id="partsData">{{ items|tojson }}</script>
+<script type="application/json" id="suppliersData">{{ suppliers|tojson }}</script>
+{% endblock %}

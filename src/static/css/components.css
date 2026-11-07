@@ -1,0 +1,215 @@
+/* ============================================================
+   船舶 PMS · 组件层
+   表格、徽章、列表、时间线、树、弹层内容
+   ============================================================ */
+
+/* ---------------- KPI ---------------- */
+.kpi {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px 15px;
+  position: relative;
+}
+.kpi::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--line);
+}
+.kpi.accent::before { background: var(--accent); }
+.kpi.danger::before { background: var(--danger); }
+.kpi.warn::before { background: var(--warn); }
+.kpi.ok::before { background: var(--ok); }
+.kpi .label { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-400); }
+.kpi .value {
+  font-size: var(--fs-2xl); font-weight: 620; line-height: 1.15;
+  margin: 6px 0 2px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.kpi .value small { font-size: 13px; font-weight: 500; color: var(--ink-400); margin-left: 4px; }
+.kpi .meta { font-size: 11.5px; color: var(--ink-500); }
+.kpi.danger .value { color: var(--danger); }
+.kpi.warn .value { color: var(--warn); }
+.kpi.ok .value { color: var(--ok); }
+
+
+/* ---------------- 表格 ---------------- */
+.table-wrap { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.tbl th {
+  text-align: left;
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-400);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px;
+  white-space: nowrap;
+  position: sticky; top: 0;
+}
+table.tbl td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+  color: var(--ink-700);
+}
+table.tbl tbody tr:last-child td { border-bottom: none; }
+table.tbl tbody tr:hover td { background: var(--surface-hover); }
+table.tbl td.mono, table.tbl th.mono { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+table.tbl td strong { color: var(--ink-900); font-weight: 600; }
+table.tbl .sub { display: block; font-size: 11px; color: var(--ink-400); margin-top: 1px; }
+table.tbl tr.row-danger td { background: var(--danger-soft); }
+table.tbl tr.row-danger:hover td { background: var(--danger-hover); }
+table.tbl tr.row-warn td { background: var(--warn-tint); }
+.num { font-variant-numeric: tabular-nums; }
+
+
+/* ---------------- 徽章 ---------------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 2px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.badge.ok { background: var(--ok-soft); color: var(--ok); border-color: var(--ok-border); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-border); }
+.badge.danger { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-border); }
+.badge.info { background: var(--info-soft); color: var(--info); border-color: var(--info-border); }
+.badge.neutral { background: var(--surface-sunken); color: var(--ink-500); border-color: var(--line); }
+.badge.accent { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
+.badge.dot::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+
+/* ---------------- 列表 ---------------- */
+.list { display: flex; flex-direction: column; }
+.list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+}
+.list-item:last-child { border-bottom: none; }
+.list-item .grow { flex: 1; min-width: 0; }
+.list-item .title { color: var(--ink-900); font-weight: 550; }
+.list-item .meta { font-size: 11px; color: var(--ink-400); margin-top: 1px; }
+.list-item .tail { margin-left: auto; text-align: right; font-size: 11px; color: var(--ink-500); white-space: nowrap; }
+
+
+/* ---------------- 时间线 ---------------- */
+.timeline { position: relative; padding-left: 18px; }
+.timeline::before {
+  content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px;
+  width: 1px; background: var(--line);
+}
+.tl-item { position: relative; padding: 0 0 14px 0; font-size: 12.5px; }
+.tl-item::before {
+  content: ""; position: absolute; left: -18px; top: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--card); border: 1.5px solid var(--ink-300);
+}
+.tl-item.ok::before { border-color: var(--ok); background: var(--ok); }
+.tl-item.warn::before { border-color: var(--warn); background: var(--warn); }
+.tl-item.danger::before { border-color: var(--danger); background: var(--danger); }
+.tl-item .when { font-family: var(--mono); font-size: 10.5px; color: var(--ink-400); }
+
+
+/* ---------------- 树 ---------------- */
+.tree { font-size: 12.5px; }
+.tree ul { list-style: none; margin-left: 18px; border-left: 1px solid var(--line); padding-left: 13px; }
+.tree > ul.root { margin-left: 0; border-left: none; padding-left: 0; }
+.tree li { padding: 1px 0; }
+.tree .node {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-700);
+}
+.tree .node:hover { background: var(--paper); }
+/* 一级为系统分组，视觉上抬一层 */
+.tree > ul.root > li > .node {
+  font-weight: 600;
+  color: var(--ink-900);
+  background: var(--surface-hover);
+  box-shadow: inset 2px 0 0 var(--ink-900);
+  margin-bottom: 2px;
+}
+.tree .node a { color: inherit; }
+.tree .node .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree .code { font-family: var(--mono); font-size: 10.5px; color: var(--ink-400); white-space: nowrap; }
+.tree .code.maker { color: var(--ink-300); }
+.tree .hours {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-500);
+  margin-left: auto; white-space: nowrap; padding-left: 10px;
+}
+.tree .crit {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+  width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 2px;
+}
+.tree .crit.A { background: var(--danger-soft); color: var(--danger); }
+.tree .crit.B { background: var(--warn-soft); color: var(--warn); }
+.tree .crit.C { background: var(--surface-sunken); color: var(--ink-400); }
+
+
+/* ---------------- 详情栅格 ---------------- */
+.defs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; }
+.defs .d { min-width: 0; }
+.defs .d dt { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-400); }
+.defs .d dd { font-size: 12.5px; color: var(--ink-900); margin-top: 1px; word-break: break-word; }
+
+
+/* ---------------- 检查项 ---------------- */
+.checklist { display: flex; flex-direction: column; }
+.check-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+}
+.check-row:last-child { border-bottom: none; }
+.check-row input { margin-top: 3px; }
+.check-row.done .txt { color: var(--ink-400); text-decoration: line-through; }
+.check-row .idx { font-family: var(--mono); font-size: 10.5px; color: var(--ink-300); width: 18px; }
+
+
+/* ---------------- 记录簿字段 ---------------- */
+.rec-fields { display: flex; flex-wrap: wrap; gap: 3px 14px; }
+.rec-item { font-size: 12.5px; color: var(--ink-900); white-space: nowrap; }
+.rec-item em { font-style: normal; font-size: 11px; color: var(--ink-400); margin-right: 4px; }
+
+
+/* ---------------- 检查项勾选态 ---------------- */
+.check-row input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  flex: none;
+}
+.check-row input[type="checkbox"]:checked:disabled { opacity: 1; }
+.check-row input[type="checkbox"]:disabled { cursor: default; }
+
+@media print {
+  .sidebar, .topbar, .page-actions, .no-print, #toasts { display: none !important; }
+  .main { margin-left: 0; }
+  .content { padding: 0; max-width: none; }
+  body { background: #fff; font-size: 10.5pt; }
+  .card { border: 1px solid var(--print-rule); break-inside: avoid; }
+  table.tbl th { background: var(--print-head) !important; }
+  a { color: inherit; text-decoration: none; }
+  .page-break { break-before: page; }
+}
+
+/* ---------------- 导入预览 ---------------- */
+.import-sum { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.import-sum .badge { font-size: 11px; padding: 2px 9px; }
+
+/* ---------------- 单据行编辑器 ---------------- */
+.line-rows { display: flex; flex-direction: column; gap: 8px; }
+.line-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.line-row select { flex: 2 1 230px; min-width: 0; }
+.line-row input[name="qty"], .line-row input[name="unit_price"] { width: 92px; }
+.line-row input[name="note"] { flex: 1 1 130px; min-width: 0; }
+.line-row .line-del { margin-left: auto; }
+.line-rows .empty-rows { font-size: 12px; color: var(--ink-400); padding: 10px 0; }

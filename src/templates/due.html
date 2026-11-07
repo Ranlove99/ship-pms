@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}到期清单 · 船舶 PMS{% endblock %}
+{% block heading %}到期清单{% endblock %}
+{% block subheading %}共 {{ items|length }} 项{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>维护到期</h2>
+    <p>日历与运行小时双触发，任一先到即进入清单。派工后生成工单，验收时自动顺延。</p>
+  </div>
+  <div class="page-actions">
+    <div class="segmented">
+      {% for d in [7, 30, 90] %}
+      <a href="{{ url_for('pages.due', days=d) }}" class="{{ 'on' if days == d }}">{{ d }} 天</a>
+      {% endfor %}
+    </div>
+    <button class="btn primary" data-action="due-generate">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>批量派工
+    </button>
+  </div>
+</div>
+
+{% set overdue = items | selectattr('status', 'equalto', 'overdue') | list %}
+
+<div class="grid grid-4 section-gap">
+  <div class="kpi danger">
+    <div class="label">已逾期</div>
+    <div class="value">{{ overdue|length }}</div>
+    <div class="meta">须立即安排</div>
+  </div>
+  <div class="kpi warn">
+    <div class="label">临近到期</div>
+    <div class="value">{{ items|length - overdue|length }}</div>
+    <div class="meta">{{ days }} 天窗口内</div>
+  </div>
+  <div class="kpi">
+    <div class="label">涉及关键设备</div>
+    <div class="value">{{ items | selectattr('criticality', 'equalto', 'A') | list | length }}</div>
+    <div class="meta">A 级设备项</div>
+  </div>
+  <div class="kpi">
+    <div class="label">预估工时合计</div>
+    <div class="value">{{ '%.1f'|format(items | sum(attribute='est_hours')) }}<small>h</small></div>
+    <div class="meta">按计划估算</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>待处理项目</h3>
+    <span class="hint">勾选后可批量生成工单，同一计划已有未关闭工单会自动跳过</span>
+  </div>
+  {% if items %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="width:34px"><input type="checkbox" id="checkAll" aria-label="全选"></th>
+          <th>设备</th>
+          <th>维护计划</th>
+          <th>周期</th>
+          <th>下次到期</th>
+          <th>剩余</th>
+          <th>状态</th>
+          <th style="text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr class="{{ 'row-danger' if item.status == 'overdue' else ('row-warn' if item.status == 'due' else '') }}">
+          <td><input type="checkbox" class="due-check" value="{{ item.id }}" aria-label="选择"></td>
+          <td>
+            <strong>{{ item.asset_name }}</strong>
+            <span class="sub">{{ item.asset_code }} · {{ item.criticality }} 级</span>
+          </td>
+          <td>
+            {{ item.title }}
+            <span class="sub">{{ item.regulation_ref or '未标注依据' }}</span>
+          </td>
+          <td class="mono">
+            {% if item.interval_days %}{{ item.interval_days }} d{% endif %}
+            {% if item.interval_days and item.interval_hours %} / {% endif %}
+            {% if item.interval_hours %}{{ '%.0f'|format(item.interval_hours) }} h{% endif %}
+            {% if not item.interval_days and not item.interval_hours %}—{% endif %}
+          </td>
+          <td class="mono">
+            {{ item.next_due_at or '—' }}
+            {% if item.next_due_hours %}<span class="sub">{{ '%.0f'|format(item.next_due_hours) }} h</span>{% endif %}
+          </td>
+          <td class="mono">
+            {% if item.days_left is not none %}
+              <span class="{{ 'badge danger' if item.days_left < 0 else ('badge warn' if item.days_left <= 30 else 'badge neutral') }}">{{ item.days_left }} d</span>
+            {% endif %}
+            {% if item.hours_left is not none %}
+              <span class="badge {{ 'danger' if item.hours_left <= 0 else ('warn' if item.hours_left <= 100 else 'neutral') }}" style="margin-left:3px">{{ '%.0f'|format(item.hours_left) }} h</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'danger' if item.status == 'overdue' else 'warn' }}">{{ item.state_label }}</span>
+          </td>
+          <td style="text-align:right">
+            <button class="btn sm" data-action="due-generate-one" data-id="{{ item.id }}">生成工单</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <div class="empty">
+      <b>{{ days }} 天内没有到期项目</b>
+      可以切换到 90 天视图，或检查维护计划的周期设置是否过宽。
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="notice" style="margin-top:14px">
+  <svg class="icon icon-sm"><use href="#i-clock"/></svg>
+  <div>
+    <b>小时制计划的基准</b>
+    运行小时到期以设备的当前累计小时计算，请在每日或每航次结束后更新主机与辅机的运行小时，
+    否则小时触发会滞后。入口在总览页「关键设备运行小时」或设备详情页。
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const all = document.getElementById("checkAll");
+  if (!all) return;
+  all.addEventListener("change", function () {
+    document.querySelectorAll(".due-check").forEach(function (el) { el.checked = all.checked; });
+  });
+});
+</script>
+{% endblock %}

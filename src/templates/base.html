@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="app-base" content="{{ url_for('pages.index') }}">
+<title>{% block title %}船舶 PMS{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.4"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><path d="M8 13h2M14 13h2M8 16.5h2M14 16.5h2"/></symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5V3.2h6v1.3"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 1 5.3 5.3l-8 8-5.3-5.3 8-8Z"/><path d="M6.7 14.3 4 17v3h3l2.7-2.7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3l9-15.5Z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.2" r=".9"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M3.8 8.2 12 4l8.2 4.2v7.6L12 20l-8.2-4.2V8.2Z"/><path d="M3.8 8.2 12 12.4l8.2-4.2M12 12.4V20"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3.8 20.5 8 12 12.2 3.5 8 12 3.8Z"/><path d="m4.5 12 7.5 3.7 7.5-3.7"/><path d="m4.5 16 7.5 3.7 7.5-3.7"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 19 6v6c0 4.2-2.9 7.3-7 8.5-4.1-1.2-7-4.3-7-8.5V6l7-2.5Z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4.5 5.5A2 2 0 0 1 6.5 3.5H19v17H6.5a2 2 0 0 1-2-2v-13Z"/><path d="M4.5 17.5a2 2 0 0 1 2-2H19"/><path d="M8.5 7.5h6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15.5V11M12.5 15.5V7.5M17 15.5v-3"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10"/><path d="m8 10.5 4 4 4-4"/><path d="M5 18.5h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V6"/><path d="m8 9.5 4-4 4 4"/><path d="M5 19h14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-anchor" viewBox="0 0 24 24"><circle cx="12" cy="6" r="2"/><path d="M12 8v11"/><path d="M8 11h8"/><path d="M4.5 15a7.5 7.5 0 0 0 15 0"/></symbol>
+    <symbol id="i-ship" viewBox="0 0 24 24"><path d="M4 16h16l-2.2 4H6.2L4 16Z"/><path d="M12 4v12"/><path d="M12 5h5l-1.4 3L17 11h-5"/><path d="M7 16V12h10v4"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 5.5H6.5v13H14"/><path d="M12 12h8"/><path d="m17 8.5 3.5 3.5-3.5 3.5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h7l5 5v12H6v-17Z"/><path d="M13 3.5v5h5"/><path d="M9 13h6M9 16.5h4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L20 9"/><path d="M20 4.5V9h-4.5"/><path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4 15"/><path d="M4 19.5V15h4.5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.5 1.5"/><path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.5-1.5"/></symbol>
+    <symbol id="i-doc-in" viewBox="0 0 24 24"><path d="M4 13.5h16v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5Z"/><path d="M12 3.5v8"/><path d="m8.5 8 3.5 3.5L15.5 8"/></symbol>
+    <symbol id="i-doc-out" viewBox="0 0 24 24"><path d="M4 13.5h16v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5Z"/><path d="M12 11.5v-8"/><path d="m8.5 6.5 3.5-3.5 3.5 3.5"/></symbol>
+    <symbol id="i-doc-check" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5V3.2h6v1.3"/><path d="m8.8 12.2 2.2 2.2 4.2-4.2"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 7h10v9H3z"/><path d="M13 10h4l3.5 3.5V16h-7.5"/><circle cx="6.8" cy="17.8" r="1.6"/><circle cx="16.6" cy="17.8" r="1.6"/></symbol>
+  </defs>
+</svg>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" fill="none" aria-hidden="true" style="color:var(--paper)">
+        <rect x="1" y="1" width="38" height="38" rx="4" stroke="currentColor" stroke-width="1.6" opacity="0.5"/>
+        <path d="M9 26h22l-3 5H12l-3-5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M20 8v18" stroke="currentColor" class="accent-line" stroke-width="1.8"/>
+        <path d="M20 9h7l-2 4 2 4h-7" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M12 31h16" stroke="currentColor" class="accent-line" stroke-width="1.6"/>
+      </svg>
+      <div class="brand-text">
+        <b>船舶 PMS</b>
+        <span>Planned Maintenance</span>
+      </div>
+    </div>
+
+    <div class="vessel-chip">
+      <b>{{ vessel.name if vessel and vessel.name else '未命名船舶' }}</b>
+      {% if vessel and vessel.imo %}IMO {{ vessel.imo }}{% else %}未填写 IMO{% endif %}
+      {% if vessel and vessel.flag %} · {{ vessel.flag }}{% endif %}
+    </div>
+
+    <nav class="nav">
+      <div class="nav-group">概览</div>
+      <a href="{{ url_for('pages.index') }}" class="{{ 'active' if page == 'dashboard' }}">
+        <svg class="icon"><use href="#i-gauge"/></svg>总览
+      </a>
+      <a href="{{ url_for('pages.due') }}" class="{{ 'active' if page == 'due' }}">
+        <svg class="icon"><use href="#i-calendar"/></svg>到期清单
+        {% if counts.due %}<span class="count">{{ counts.due }}</span>{% endif %}
+      </a>
+
+      <div class="nav-group">维护</div>
+      <a href="{{ url_for('pages.workorders') }}" class="{{ 'active' if page == 'workorders' }}">
+        <svg class="icon"><use href="#i-clipboard"/></svg>工单
+      </a>
+      <a href="{{ url_for('pages.plans') }}" class="{{ 'active' if page == 'plans' }}">
+        <svg class="icon"><use href="#i-wrench"/></svg>维护计划
+      </a>
+      <a href="{{ url_for('pages.defects') }}" class="{{ 'active' if page == 'defects' }}">
+        <svg class="icon"><use href="#i-alert"/></svg>缺陷
+        {% if counts.defects %}<span class="count">{{ counts.defects }}</span>{% endif %}
+      </a>
+
+      <div class="nav-group">资产</div>
+      <a href="{{ url_for('pages.assets') }}" class="{{ 'active' if page == 'assets' }}">
+        <svg class="icon"><use href="#i-layers"/></svg>设备树
+      </a>
+      <a href="{{ url_for('pages.parts') }}" class="{{ 'active' if page == 'parts' }}">
+        <svg class="icon"><use href="#i-box"/></svg>备件库存
+      </a>
+      <a href="{{ url_for('pages.stock_docs') }}" class="{{ 'active' if page == 'stock_docs' }}">
+        <svg class="icon"><use href="#i-file"/></svg>库存单据
+        {% if counts.docs_draft %}<span class="count">{{ counts.docs_draft }}</span>{% endif %}
+      </a>
+
+      <div class="nav-group">合规</div>
+      <a href="{{ url_for('pages.certificates') }}" class="{{ 'active' if page == 'certificates' }}">
+        <svg class="icon"><use href="#i-shield"/></svg>证书与检验
+        {% if counts.certs %}<span class="count">{{ counts.certs }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('pages.records') }}" class="{{ 'active' if page == 'records' }}">
+        <svg class="icon"><use href="#i-book"/></svg>电子记录簿
+        {% if counts.records %}<span class="count">{{ counts.records }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('pages.reports') }}" class="{{ 'active' if page == 'reports' }}">
+        <svg class="icon"><use href="#i-chart"/></svg>报表与检查包
+      </a>
+
+      <div class="nav-group">系统</div>
+      <a href="{{ url_for('pages.settings') }}" class="{{ 'active' if page == 'settings' }}">
+        <svg class="icon"><use href="#i-settings"/></svg>设置
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <span class="ver">v{{ app_version }}</span>
+      <span>离线运行</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm nav-toggle" id="navToggle" aria-label="打开导航">
+        <svg class="icon"><use href="#i-menu"/></svg>
+      </button>
+      <h1>{% block heading %}总览{% endblock %}</h1>
+      <span class="sub">{% block subheading %}{% endblock %}</span>
+      <div class="topbar-right">
+        <span class="clock" id="clock"></span>
+        {% if current_user %}
+        <span class="user-chip">
+          <span class="avatar">{{ (current_user.display_name or current_user.username)[:1] }}</span>
+          <span>{{ current_user.display_name }}<span style="color:var(--ink-300)"> · {{ role_label(current_user.role) }}</span></span>
+        </span>
+        <button class="btn ghost sm" id="logoutBtn" title="退出登录">
+          <svg class="icon"><use href="#i-logout"/></svg>
+        </button>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/actions-maintenance.js') }}"></script>
+<script src="{{ url_for('static', filename='js/actions-parts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/actions-compliance.js') }}"></script>
+<script src="{{ url_for('static', filename='js/actions-io.js') }}"></script>
+<script src="{{ url_for('static', filename='js/actions-stock.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

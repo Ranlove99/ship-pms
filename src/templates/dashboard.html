@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}总览 · 船舶 PMS{% endblock %}
+{% block heading %}总览{% endblock %}
+{% block subheading %}船时 {{ data.today }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ vessel.name or '未命名船舶' }}{% if vessel.imo %}<span style="font-weight:400;color:var(--ink-400);font-size:13px"> · IMO {{ vessel.imo }}</span>{% endif %}</h2>
+    <p>
+      {% if data.plans_overdue %}
+        有 {{ data.plans_overdue }} 项维护已逾期，{{ data.plans_due_soon }} 项临近到期
+      {% elif data.plans_due_soon %}
+        有 {{ data.plans_due_soon }} 项维护临近到期
+      {% else %}
+        全部维护计划均在有效期内
+      {% endif %}
+      {% if not data.chain_ok %}<span class="badge danger" style="margin-left:8px">记录链异常</span>{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('pages.due') }}">
+      <svg class="icon icon-sm"><use href="#i-calendar"/></svg>到期清单
+    </a>
+    <a class="btn primary" href="{{ url_for('pages.reports') }}">
+      <svg class="icon icon-sm"><use href="#i-file"/></svg>生成检查包
+    </a>
+  </div>
+</div>
+
+<div class="grid grid-5 section-gap">
+  <div class="kpi {{ 'danger' if data.plans_overdue else 'ok' }}">
+    <div class="label">逾期维护</div>
+    <div class="value">{{ data.plans_overdue }}<small>/ {{ data.plans_total }}</small></div>
+    <div class="meta">
+      {% if data.plans_overdue %}需优先处理{% else %}无逾期项{% endif %}
+      · 临期 {{ data.plans_due_soon }}
+    </div>
+  </div>
+  <div class="kpi {{ 'warn' if data.defects.total else 'ok' }}">
+    <div class="label">未关闭缺陷</div>
+    <div class="value">{{ data.defects.total }}</div>
+    <div class="meta">
+      严重 {{ data.defects.critical }} · 重要 {{ data.defects.major }} · 轻微 {{ data.defects.minor }}
+    </div>
+  </div>
+  <div class="kpi {{ 'accent' if data.wos_pending else '' }}">
+    <div class="label">在办工单</div>
+    <div class="value">{{ data.wos_pending }}</div>
+    <div class="meta">待验收 {{ data.wos_to_verify }} 项</div>
+  </div>
+  <div class="kpi {{ 'warn' if data.pending_records else 'ok' }}">
+    <div class="label">待核签记录</div>
+    <div class="value">{{ data.pending_records }}</div>
+    <div class="meta">
+      {% if data.cert_expired %}<span style="color:var(--danger)">证书过期 {{ data.cert_expired }} 份</span>
+      {% elif data.cert_alerts %}证书 {{ data.cert_alerts }} 份临期
+      {% else %}证书均在有效期{% endif %}
+    </div>
+  </div>
+  <div class="kpi {{ 'warn' if data.reorder else 'ok' }}">
+    <div class="label">补货建议</div>
+    <div class="value">{{ data.reorder }}</div>
+    <div class="meta">
+      {% if data.reorder %}<a href="{{ url_for('pages.parts') }}">备件低于最低库存</a>
+      {% else %}备件库存充足{% endif %}
+      · 库存金额 ¥{{ data.parts_value|money }}
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <div class="card section-gap">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-calendar"/></svg>
+        <h3>到期与逾期</h3>
+        <span class="hint">按紧急程度排序</span>
+        <a class="btn ghost sm" href="{{ url_for('pages.due') }}" style="margin-left:auto">全部<svg class="icon icon-sm"><use href="#i-chevron"/></svg></a>
+      </div>
+      {% if data.due_items %}
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>设备</th><th>计划</th><th>到期</th><th>状态</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for item in data.due_items %}
+            <tr class="{{ 'row-danger' if item.status == 'overdue' else ('row-warn' if item.status == 'due' else '') }}">
+              <td>
+                <strong>{{ item.asset_name }}</strong>
+                <span class="sub">{{ item.asset_code }} · {{ item.criticality }} 级</span>
+              </td>
+              <td>{{ item.title }}<span class="sub">{{ item.regulation_ref or '—' }}</span></td>
+              <td class="mono">{{ item.next_due_at or '—' }}<span class="sub">{{ ('%.0f'|format(item.next_due_hours)) + ' h' if item.next_due_hours else '' }}</span></td>
+              <td>
+                <span class="badge {{ 'danger' if item.status == 'overdue' else 'warn' }}">{{ item.state_label }}</span>
+              </td>
+              <td style="text-align:right">
+                <button class="btn sm" data-action="due-generate-one" data-id="{{ item.id }}">派工</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty"><b>没有临期或逾期项目</b>所有维护计划均在周期内，保持当前节奏。</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-alert"/></svg>
+        <h3>未关闭缺陷</h3>
+        <a class="btn ghost sm" href="{{ url_for('pages.defects') }}" style="margin-left:auto">全部<svg class="icon icon-sm"><use href="#i-chevron"/></svg></a>
+      </div>
+      {% if data.recent_defects %}
+      <div class="list">
+        {% for d in data.recent_defects %}
+        <div class="list-item">
+          <span class="badge {{ 'danger' if d.severity == 'critical' else ('warn' if d.severity == 'major' else 'neutral') }}">{{ d.severity_label }}</span>
+          <div class="grow">
+            <div class="title">{{ d.description }}</div>
+            <div class="meta">{{ d.no }} · {{ d.asset_name or '未关联设备' }} · {{ d.found_at[:10] }}</div>
+          </div>
+          <div class="tail">
+            <span class="badge {{ 'info' if d.status == 'in_progress' else 'neutral' }}">{{ d.status_label }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card-body"><div class="empty"><b>没有未关闭缺陷</b>缺陷闭环干净。</div></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card section-gap">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-book"/></svg>
+        <h3>记录簿状态</h3>
+      </div>
+      <div class="list">
+        {% for b in data.books %}
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">{{ b.title }}</div>
+            <div class="meta">{{ b.code }} · 共 {{ b.total }} 条{% if b.pending %} · <span style="color:var(--warn)">待核签 {{ b.pending }}</span>{% endif %}</div>
+          </div>
+          <div class="tail">
+            <span class="badge {{ 'ok' if b.chain_ok else 'danger' }}">{{ '链完整' if b.chain_ok else '链异常' }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card section-gap">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-shield"/></svg>
+        <h3>证书预警</h3>
+      </div>
+      {% if data.cert_items %}
+      <div class="list">
+        {% for c in data.cert_items %}
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">{{ c.name }}</div>
+            <div class="meta">到期 {{ c.expires_at or '未填' }}</div>
+          </div>
+          <div class="tail">
+            <span class="badge {{ 'danger' if c.state == 'expired' else 'warn' }}">{{ c.state_label }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card-body"><div class="empty">证书均在有效期内</div></div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-clock"/></svg>
+        <h3>关键设备运行小时</h3>
+      </div>
+      <div class="list">
+        {% for a in hours %}
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">{{ a.name }}</div>
+            <div class="meta">{{ a.code }}</div>
+          </div>
+          <div class="tail">
+            <button class="btn ghost sm" data-action="hours-update" data-id="{{ a.id }}"
+              data-name="{{ a.name }}" data-hours="{{ a.running_hours }}">
+              <span class="num" style="font-family:var(--mono);font-size:12.5px;color:var(--ink-900)">{{ '%.0f'|format(a.running_hours) }} h</span>
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

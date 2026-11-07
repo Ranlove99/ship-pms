@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}报表与检查包 · 船舶 PMS{% endblock %}
+{% block heading %}报表与检查包{% endblock %}
+{% block subheading %}数据来自系统记录，不做人工修饰{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>报告与导出</h2>
+    <p>面向 PSC 检查、船级社检验与内部审核。检查包用浏览器打印为 PDF，不依赖额外组件。</p>
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <div class="card section-gap">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-file"/></svg>
+        <h3>PSC 检查包</h3>
+        <span class="hint">含船舶资料、证书、维护、缺陷与记录链结论</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12.5px;color:var(--ink-500);margin-bottom:12px">
+          生成一份可直接打印的自查包，覆盖检查官最常索要的六类证据。打印后由船长签字，作为迎检材料。
+        </p>
+        <div class="form-grid">
+          <div class="field">
+            <label>维护记录回看窗口</label>
+            <select id="packDays">
+              <option value="30">最近 30 天</option>
+              <option value="90" selected>最近 90 天</option>
+              <option value="180">最近 180 天</option>
+              <option value="365">最近 12 个月</option>
+            </select>
+          </div>
+          <div class="field" style="justify-content:flex-end">
+            <button class="btn primary" id="openPack" style="align-self:flex-start;margin-top:1px">
+              <svg class="icon icon-sm"><use href="#i-file"/></svg>生成并打印
+            </button>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-400)">
+          <span class="badge neutral">船舶与证书</span>
+          <span class="badge neutral">逾期维护</span>
+          <span class="badge neutral">已完成工单</span>
+          <span class="badge neutral">未关闭缺陷</span>
+          <span class="badge neutral">记录簿核签</span>
+          <span class="badge neutral">哈希链结论</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-download"/></svg>
+        <h3>CSV 导出</h3>
+        <span class="hint">带 BOM，Excel 直接打开</span>
+      </div>
+      <div class="list">
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">逾期与临期维护清单</div>
+            <div class="meta">设备、计划、剩余天数与小时、法规依据</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.overdue_csv') }}">下载</a></div>
+        </div>
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">缺陷台账</div>
+            <div class="meta">编号、设备、严重度、状态、纠正措施</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.defects_csv') }}">下载</a></div>
+        </div>
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">证书清单</div>
+            <div class="meta">签发、到期、剩余天数与状态</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.certs_csv') }}">下载</a></div>
+        </div>
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">工单台账</div>
+            <div class="meta">全部工单及完成时运行小时</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.workorders_csv') }}">下载</a></div>
+        </div>
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">补货建议清单</div>
+            <div class="meta">低于最低库存的备件、近 90 天出库与建议采购量</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.reorder_csv') }}">下载</a></div>
+        </div>
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">库存流水台账</div>
+            <div class="meta">近 90 天全部出入库与盘点记录</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.moves_csv') }}">下载</a></div>
+        </div>
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">备件消耗分析</div>
+            <div class="meta">近 90 天出库汇总与领用次数</div>
+          </div>
+          <div class="tail"><a class="btn sm" href="{{ url_for('reports_api.consumption_csv') }}">下载</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card section-gap">
+      <div class="card-head"><h3>当前状态</h3></div>
+      <div class="list">
+        <div class="list-item">
+          <div class="grow"><div class="title">维护计划</div><div class="meta">共 {{ stats.plans_total }} 条</div></div>
+          <div class="tail">
+            <span class="badge {{ 'danger' if stats.overdue else 'ok' }}">逾期 {{ stats.overdue }}</span>
+            <span class="badge warn" style="margin-left:4px">临期 {{ stats.due }}</span>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="grow"><div class="title">工单</div><div class="meta">累计 {{ stats.wos }} 条</div></div>
+          <div class="tail">
+            <span class="badge {{ 'info' if stats.wos_open else 'neutral' }}">在办 {{ stats.wos_open }}</span>
+            {% if stats.wos_verify %}<span class="badge accent" style="margin-left:4px">待验收 {{ stats.wos_verify }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="grow"><div class="title">未关闭缺陷</div><div class="meta">严重 {{ stats.defects.critical }} · 重要 {{ stats.defects.major }}</div></div>
+          <div class="tail"><span class="badge {{ 'warn' if stats.defects.total else 'ok' }}">{{ stats.defects.total }}</span></div>
+        </div>
+        <div class="list-item">
+          <div class="grow"><div class="title">证书</div><div class="meta">共 {{ stats.certs|length }} 份</div></div>
+          <div class="tail">
+            <span class="badge {{ 'danger' if stats.certs | selectattr('state','equalto','expired') | list else 'ok' }}">
+              过期 {{ stats.certs | selectattr('state','equalto','expired') | list | length }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>打印建议</h3></div>
+      <div class="card-body" style="font-size:12px;color:var(--ink-500);line-height:1.7">
+        <p style="margin-bottom:8px">Chrome / Edge 打印时选择：</p>
+        <ul style="margin-left:16px">
+          <li>纸张 A4，纵向</li>
+          <li>边距「默认」或「最小」</li>
+          <li>勾选「背景图形」以保留表格底色</li>
+          <li>目标选择「另存为 PDF」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("openPack").addEventListener("click", function () {
+  const days = document.getElementById("packDays").value;
+  window.open(PMS.url("print/psc-pack?days=" + days), "_blank");
+});
+</script>
+{% endblock %}

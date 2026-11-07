@@ -1,0 +1,24 @@
+#!/bin/bash
+# 应用文件已删除：仅用 shell 做最后兜底
+set -u
+
+APP_NAME="ship-pms"
+APP_DIR="${TRIM_APPDEST:-/var/apps/${APP_NAME}/target}"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/${APP_NAME}/var}"
+
+# 清理可能残留的 socket 与 pid（不覆盖他人占用的路径）
+if [ -S "$APP_DIR/app.sock" ]; then
+  rm -f "$APP_DIR/app.sock" 2>/dev/null || true
+fi
+
+if [ -f "$VAR_DIR/app.pid" ]; then
+  PID="$(head -n 1 "$VAR_DIR/app.pid" 2>/dev/null | tr -d '[:space:]')"
+  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+    if tr '\0' ' ' < "/proc/$PID/cmdline" 2>/dev/null | grep -q "wsgi.py"; then
+      kill -TERM "$PID" 2>/dev/null || true
+    fi
+  fi
+  rm -f "$VAR_DIR/app.pid" 2>/dev/null || true
+fi
+
+exit 0

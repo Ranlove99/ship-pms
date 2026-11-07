@@ -1,0 +1,8 @@
+#!/bin/bash
+# 配置变更后：重启服务
+set -u
+APP_NAME="ship-pms"
+CMD_DIR="/var/apps/${TRIM_APPNAME:-$APP_NAME}/cmd"
+[ -f "$CMD_DIR/main" ] || CMD_DIR="${TRIM_APPDEST%/}/../cmd"
+[ -f "$CMD_DIR/main" ] && bash "$CMD_DIR/main" start
+exit 0

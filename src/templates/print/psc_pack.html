@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSC 检查包 · {{ data.vessel.name or '船舶' }}</title>
+<style>
+:root{
+  --ink:#0E2230; --ink2:#1B3A4B; --muted:#46606E; --line:#D8D2C8; --line-soft:#EEE9E1;
+  --paper:#FAF8F4; --accent:#B2451C; --ok:#1F6B5A; --danger:#8E2B22; --warn:#A8701A;
+  --ok-soft:#E2EEE9; --warn-soft:#F7EEDC; --danger-soft:#F6E3E0; --neutral-soft:#EFEDE8;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:12px;line-height:1.55}
+.sheet{max-width:920px;margin:0 auto;background:#fff;padding:42px 46px 56px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:6px}
+.top h1{font-size:21px;font-weight:650;letter-spacing:-.01em}
+.top .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+.top .right{text-align:right;font-size:10.5px;color:var(--muted);line-height:1.7}
+.top .right b{display:block;color:var(--ink);font-size:12px}
+h2{font-size:13px;font-weight:650;margin:22px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:10.5px;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px}
+th{text-align:left;font-weight:600;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line);padding:6px 8px}
+td{padding:6px 8px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:var(--mono);font-size:10px;white-space:nowrap}
+.badge{display:inline-block;font-size:9.5px;font-weight:600;padding:0 5px;border-radius:2px}
+.b-danger{background:var(--danger-soft);color:var(--danger)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}
+.b-ok{background:var(--ok-soft);color:var(--ok)}
+.b-neutral{background:var(--neutral-soft);color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 16px;margin-top:8px}
+.kv .k{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kv .v{font-size:11.5px;color:var(--ink)}
+.summary{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:1px solid var(--line);margin-top:10px}
+.summary div{padding:9px 10px;border-right:1px solid var(--line)}
+.summary div:last-child{border-right:none}
+.summary .l{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.summary .n{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:2px}
+.summary .n.pos{color:var(--ok)}
+.summary .n.neg{color:var(--danger)}
+.summary .n.warnc{color:var(--warn)}
+.note{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--paper);padding:10px 12px;font-size:10.5px;color:var(--ink2);margin-top:10px}
+.note.danger{border-left-color:var(--danger)}
+.note b{color:var(--ink)}
+.sign{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:30px;padding-top:14px;border-top:1px solid var(--line)}
+.sign div{border-bottom:1px solid var(--ink);height:44px;position:relative}
+.sign div span{position:absolute;bottom:-18px;left:0;font-size:10px;color:var(--muted)}
+.foot{margin-top:34px;padding-top:10px;border-top:1px solid var(--line);font-size:9.5px;color:var(--muted);display:flex;justify-content:space-between;gap:16px}
+.toolbar{max-width:920px;margin:16px auto 0;padding:0 46px;display:flex;gap:8px;justify-content:flex-end}
+.btn{font-family:inherit;font-size:12px;padding:6px 14px;border:1px solid var(--line);background:#fff;border-radius:3px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.empty{font-size:10.5px;color:var(--muted);padding:8px 0}
+@media print{
+  body{background:#fff}
+  .toolbar{display:none}
+  .sheet{max-width:none;padding:0;border:none}
+  h2{break-after:avoid}
+  table{break-inside:auto}
+  tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="btn" onclick="window.close()">关闭</button>
+  <button class="btn primary" onclick="window.print()">打印 / 另存为 PDF</button>
+</div>
+
+<div class="sheet">
+  <div class="top">
+    <div>
+      <h1>PSC 检查自查包</h1>
+      <div class="sub">{{ data.vessel.name or '未命名船舶' }}{% if data.vessel.imo %} · IMO {{ data.vessel.imo }}{% endif %}{% if data.vessel.flag %} · {{ data.vessel.flag }}{% endif %}</div>
+    </div>
+    <div class="right">
+      <b>生成日期 {{ data.generated_at }}</b>
+      维护记录窗口：最近 {{ data.window_days }} 天<br>
+      数据来源：船舶 PMS 本地记录
+    </div>
+  </div>
+
+  <div class="summary">
+    <div><div class="l">逾期维护</div><div class="n" class="n {{ 'neg' if data.counts.overdue else 'pos' }}">{{ data.counts.overdue }}</div></div>
+    <div><div class="l">临期维护</div><div class="n">{{ data.counts.due_soon }}</div></div>
+    <div><div class="l">已完成工单</div><div class="n">{{ data.counts.completed }}</div></div>
+    <div><div class="l">未关闭缺陷</div><div class="n" class="n {{ 'warnc' if data.counts.defects_open else 'pos' }}">{{ data.counts.defects_open }}</div></div>
+    <div><div class="l">过期证书</div><div class="n" class="n {{ 'neg' if data.counts.cert_expired else 'pos' }}">{{ data.counts.cert_expired }}</div></div>
+    <div><div class="l">待核签记录</div><div class="n">{{ data.counts.records_pending }}</div></div>
+  </div>
+
+  <h2><span class="n">01</span>船舶资料</h2>
+  <div class="kv">
+    <div><div class="k">船名</div><div class="v">{{ data.vessel.name or '—' }}</div></div>
+    <div><div class="k">IMO</div><div class="v mono">{{ data.vessel.imo or '—' }}</div></div>
+    <div><div class="k">呼号</div><div class="v mono">{{ data.vessel.call_sign or '—' }}</div></div>
+    <div><div class="k">船旗</div><div class="v">{{ data.vessel.flag or '—' }}</div></div>
+    <div><div class="k">总吨</div><div class="v mono">{{ data.vessel.gt or '—' }}</div></div>
+    <div><div class="k">船型</div><div class="v">{{ data.vessel.ship_type or '—' }}</div></div>
+    <div><div class="k">船级社</div><div class="v">{{ data.vessel.class_society or '—' }}</div></div>
+    <div><div class="k">管理公司</div><div class="v">{{ data.vessel.manager or '—' }}</div></div>
+  </div>
+
+  <h2><span class="n">02</span>证书与检验状态</h2>
+  {% if data.certificates %}
+  <table>
+    <thead><tr><th>证书</th><th>类别</th><th>证书号</th><th>签发机构</th><th>到期</th><th>状态</th></tr></thead>
+    <tbody>
+      {% for c in data.certificates %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ c.category_label }}</td>
+        <td class="mono">{{ c.cert_no or '—' }}</td>
+        <td>{{ c.issuer or '—' }}</td>
+        <td class="mono">{{ c.expires_at or '—' }}</td>
+        <td><span class="badge {{ 'b-danger' if c.state == 'expired' else ('b-warn' if c.state == 'soon' else 'b-ok') }}">{{ c.state_label }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">无证书记录</div>{% endif %}
+
+  <h2><span class="n">03</span>逾期与临期维护</h2>
+  {% if data.overdue or data.due_soon %}
+  <table>
+    <thead><tr><th>设备</th><th>维护计划</th><th>下次到期</th><th>剩余</th><th>依据</th></tr></thead>
+    <tbody>
+      {% for p in (data.overdue + data.due_soon) %}
+      <tr>
+        <td>{{ p.asset_name }}<span style="color:var(--muted)"> ({{ p.asset_code }})</span></td>
+        <td>{{ p.title }}</td>
+        <td class="mono">{{ p.next_due_at or '—' }}</td>
+        <td>
+          <span class="badge {{ 'b-danger' if p.status == 'overdue' else 'b-warn' }}">{{ p.state_label }}</span>
+        </td>
+        <td style="font-size:9.5px">{{ p.regulation_ref or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">窗口内无逾期或临期项目</div>{% endif %}
+
+  <h2><span class="n">04</span>已完成维护（最近 {{ data.window_days }} 天）</h2>
+  {% if data.completed %}
+  <table>
+    <thead><tr><th>工单号</th><th>设备</th><th>内容</th><th>完成日期</th><th>运行小时</th><th>执行人</th><th>状态</th></tr></thead>
+    <tbody>
+      {% for w in data.completed %}
+      <tr>
+        <td class="mono">{{ w.no }}</td>
+        <td>{{ w.asset_name }}<span style="color:var(--muted)"> ({{ w.asset_code }})</span></td>
+        <td>{{ w.title }}</td>
+        <td class="mono">{{ (w.completed_at or '')[:10] }}</td>
+        <td class="mono">{{ w.running_hours_at_done if w.running_hours_at_done is not none else '—' }}</td>
+        <td>{{ w.completed_name or '—' }}</td>
+        <td><span class="badge {{ 'b-ok' if w.status == 'verified' else 'b-neutral' }}">{{ '已验收' if w.status == 'verified' else '待验收' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">窗口内无已完成工单</div>{% endif %}
+
+  <h2><span class="n">05</span>未关闭缺陷</h2>
+  {% if data.defects_open %}
+  <table>
+    <thead><tr><th>编号</th><th>设备</th><th>描述</th><th>严重度</th><th>状态</th><th>发现日期</th></tr></thead>
+    <tbody>
+      {% for d in data.defects_open %}
+      <tr>
+        <td class="mono">{{ d.no }}</td>
+        <td>{{ d.asset_name or '—' }}</td>
+        <td>{{ d.description }}</td>
+        <td><span class="badge {{ 'b-danger' if d.severity == 'critical' else ('b-warn' if d.severity == 'major' else 'b-neutral') }}">{{ d.severity_label }}</span></td>
+        <td>{{ d.status_label }}</td>
+        <td class="mono">{{ d.found_at[:10] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">无未关闭缺陷</div>{% endif %}
+
+  <h2><span class="n">06</span>电子记录簿</h2>
+  <table>
+    <thead><tr><th>记录簿</th><th>依据</th><th style="text-align:right">条数</th><th style="text-align:right">待核签</th><th>哈希链</th></tr></thead>
+    <tbody>
+      {% for b in data.books %}
+      <tr>
+        <td>{{ b.title }}</td>
+        <td style="font-size:9.5px">{{ b.regulation_ref }}</td>
+        <td class="mono" style="text-align:right">{{ b.total }}</td>
+        <td class="mono" style="text-align:right">{{ b.pending }}</td>
+        <td><span class="badge {{ 'b-ok' if b.chain_ok else 'b-danger' }}">{{ '完整' if b.chain_ok else '异常' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2><span class="n">07</span>关键设备运行小时</h2>
+  <table>
+    <thead><tr><th>设备编码</th><th>设备名称</th><th style="text-align:right">累计小时</th><th>更新时间</th></tr></thead>
+    <tbody>
+      {% for h in data.hours %}
+      <tr>
+        <td class="mono">{{ h.code }}</td>
+        <td>{{ h.name }}</td>
+        <td class="mono" style="text-align:right">{{ '%.0f'|format(h.running_hours) if h.running_hours else '0' }}</td>
+        <td class="mono">{{ (h.running_hours_at or '')[:16].replace('T',' ') or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2><span class="n">08</span>数据完整性结论</h2>
+  <div class="note">
+    <b>{{ '校验通过' if data.counts.chain_ok else '发现异常，须人工核查' }}</b><br>
+    本包所列维护记录、缺陷与电子记录簿条目均存储于本船本地数据库，
+    记录簿条目与审计日志采用逐条哈希链接，任何事后修改都会导致链校验失败。
+    {% if not data.counts.chain_ok %}
+    本次校验发现断链，请在「设置 → 完整性校验」查看具体条目并记录处置过程。
+    {% endif %}
+  </div>
+
+  <div class="note danger">
+    <b>使用声明</b><br>
+    本检查包由船舶 PMS 自动生成，内容取自系统记录，未作人工修饰。电子记录簿正式替代纸质记录，
+    须经船旗国主管机关或其授权认可组织批准并签发声明，声明副本应留船。
+  </div>
+
+  <div class="sign">
+    <div><span>轮机长 / Chief Engineer</span></div>
+    <div><span>船长 / Master</span></div>
+    <div><span>日期 / Date</span></div>
+  </div>
+
+  <div class="foot">
+    <span>船舶 PMS v1.0 · 本地离线运行</span>
+    <span>{{ data.vessel.name or '' }} · {{ data.generated_at }}</span>
+  </div>
+</div>
+
+</body>
+</html>

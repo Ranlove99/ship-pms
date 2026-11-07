@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }} · 设备{% endblock %}
+{% block heading %}{{ item.name }}{% endblock %}
+{% block subheading %}{{ item.code }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ item.name }}</h2>
+    <p>
+      {% for p in item.path %}
+        {% if p.id != item.id %}
+        <a href="{{ url_for('pages.asset_detail', asset_id=p.id) }}">{{ p.name }}</a>
+        <span style="color:var(--ink-300)"> / </span>
+        {% endif %}
+      {% endfor %}
+      {{ item.code }}
+      <span class="badge {{ 'danger' if item.criticality == 'A' else ('warn' if item.criticality == 'B' else 'neutral') }}" style="margin-left:6px">{{ item.criticality_label }}</span>
+      <span class="badge neutral" style="margin-left:4px">{{ item.status_label }}</span>
+    </p>
+  </div>
+  <div class="page-actions">
+    <button class="btn" data-action="hours-update" data-id="{{ item.id }}" data-name="{{ item.name }}" data-hours="{{ item.running_hours }}">
+      <svg class="icon icon-sm"><use href="#i-clock"/></svg>更新运行小时
+    </button>
+    <a class="btn ghost" href="{{ url_for('pages.assets') }}">返回设备树</a>
+  </div>
+</div>
+
+<div class="grid grid-4 section-gap">
+  <div class="kpi">
+    <div class="label">累计运行小时</div>
+    <div class="value">{{ '%.0f'|format(item.running_hours) }}<small>h</small></div>
+    <div class="meta">{{ item.running_hours_at|dt if item.running_hours_at else '未记录更新时间' }}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">维护计划</div>
+    <div class="value">{{ plans|length }}</div>
+    <div class="meta">该设备下的计划条数</div>
+  </div>
+  <div class="kpi">
+    <div class="label">历史记录</div>
+    <div class="value">{{ history|length }}</div>
+    <div class="meta">工单与缺陷合计</div>
+  </div>
+  <div class="kpi">
+    <div class="label">子设备</div>
+    <div class="value">{{ children|length }}</div>
+    <div class="meta">下级节点</div>
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <div class="card section-gap">
+      <div class="card-head"><svg class="icon"><use href="#i-file"/></svg><h3>设备档案</h3></div>
+      <div class="card-body">
+        <dl class="defs">
+          <div class="d"><dt>设备编码</dt><dd class="mono">{{ item.code }}</dd></div>
+          <div class="d"><dt>类别</dt><dd>{{ item.category_label }}</dd></div>
+          <div class="d"><dt>关键度</dt><dd>{{ item.criticality_label }}</dd></div>
+          <div class="d"><dt>厂家</dt><dd>{{ item.maker or '—' }}</dd></div>
+          <div class="d"><dt>型号</dt><dd>{{ item.model or '—' }}</dd></div>
+          <div class="d"><dt>序列号</dt><dd class="mono">{{ item.serial_no or '—' }}</dd></div>
+          <div class="d"><dt>安装位置</dt><dd>{{ item.location or '—' }}</dd></div>
+          <div class="d"><dt>安装日期</dt><dd class="mono">{{ item.install_date or '—' }}</dd></div>
+          <div class="d"><dt>状态</dt><dd>{{ item.status_label }}</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card section-gap">
+      <div class="card-head"><svg class="icon"><use href="#i-wrench"/></svg><h3>维护计划</h3></div>
+      {% if plans %}
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>计划</th><th>周期</th><th>下次到期</th><th>上次完成</th><th>依据</th></tr></thead>
+          <tbody>
+            {% for p in plans %}
+            <tr>
+              <td>{{ p.title }}</td>
+              <td class="mono">
+                {% if p.interval_days %}{{ p.interval_days }} d{% endif %}
+                {% if p.interval_days and p.interval_hours %} / {% endif %}
+                {% if p.interval_hours %}{{ '%.0f'|format(p.interval_hours) }} h{% endif %}
+              </td>
+              <td class="mono">
+                {% if p.next_due_at %}{{ p.next_due_at }}
+                {% elif p.next_due_hours %}{{ '%.0f'|format(p.next_due_hours) }} h
+                {% else %}未设基准{% endif %}
+              </td>
+              <td class="mono">{{ p.last_done_at or '—' }}</td>
+              <td style="font-size:11.5px;color:var(--ink-500)">{{ p.regulation_ref or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body"><div class="empty">该设备还没有维护计划，去「维护计划」页新建。</div></div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><svg class="icon"><use href="#i-clock"/></svg><h3>历史记录</h3></div>
+      {% if history %}
+      <div class="card-body">
+        <div class="timeline">
+          {% for e in history %}
+          <div class="tl-item {{ 'ok' if e.status in ('verified','closed') else ('warn' if e.status in ('done','fixed') else '') }}">
+            <div class="when">{{ e.at|dt }} · {{ '工单' if e.kind == 'workorder' else '缺陷' }} {{ e.ref }}</div>
+            <div>
+              {{ e.title }}
+              {% if e.kind == 'workorder' %}
+              <a href="{{ url_for('pages.workorder_detail', wo_id=e.id) }}" class="badge info" style="margin-left:6px">查看</a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="card-body"><div class="empty">还没有维护或缺陷记录</div></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card section-gap">
+      <div class="card-head"><h3>维护状态</h3></div>
+      <div class="list">
+        <div class="list-item">
+          <div class="grow"><div class="title">生效计划</div><div class="meta">含日历与小时触发</div></div>
+          <div class="tail num">{{ plans | selectattr('active', 'equalto', 1) | list | length }} 条</div>
+        </div>
+        <div class="list-item">
+          <div class="grow"><div class="title">最近完成</div>
+            <div class="meta">{{ history[0].ref if history else '暂无记录' }}</div>
+          </div>
+          <div class="tail">{{ history[0].at[:10] if history else '—' }}</div>
+        </div>
+        <div class="list-item">
+          <div class="grow"><div class="title">累计运行</div><div class="meta">用于小时制到期计算</div></div>
+          <div class="tail num">{{ '%.0f'|format(item.running_hours) }} h</div>
+        </div>
+      </div>
+    </div>
+
+    {% if children %}
+    <div class="card section-gap">
+      <div class="card-head"><h3>子设备</h3></div>
+      <div class="list">
+        {% for c in children %}
+        <div class="list-item">
+          <span class="crit {{ c.criticality }}" style="font-family:var(--mono);font-size:9.5px;font-weight:700;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;border-radius:2px;background:var(--paper);color:var(--ink-500)">{{ c.criticality }}</span>
+          <div class="grow">
+            <div class="title"><a href="{{ url_for('pages.asset_detail', asset_id=c.id) }}">{{ c.name }}</a></div>
+            <div class="meta">{{ c.code }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if item.notes %}
+    <div class="card section-gap">
+      <div class="card-head"><h3>备注</h3></div>
+      <div class="card-body" style="font-size:12.5px;color:var(--ink-700);white-space:pre-wrap">{{ item.notes }}</div>
+    </div>
+    {% endif %}
+
+    <div class="notice warn">
+      <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+      <div>
+        <b>A 级设备的额外要求</b>
+        ISM 10.3 要求识别突然故障会导致危险局面的设备，并安排定期测试（含备用设备与不连续使用的系统）。
+        这类设备建议同时建立「备用设备切换试验」计划。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="assetsData">[{% for a in stats.all_assets %}{"id":{{ a.id }},"label":{{ (a.code ~ ' · ' ~ a.name)|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+#!/bin/bash
+# 解压之前执行。
+#
+# 约束（教训）：此刻系统尚未创建 @appdata / @appconf 目录。
+# 在这里 mkdir 会以错误属主提前建目录，系统随后跳过 chown，
+# 应用以 package 用户运行时便写不进去，安装直接失败。
+# 因此本脚本只做「与目录无关」的检查。
+set -u
+
+APP_NAME="ship-pms"
+
+fail() {
+  echo "$1" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+  exit 1
+}
+
+PYTHON_BIN=""
+for P in /var/apps/python312/target/bin /usr/local/bin /usr/bin; do
+  if [ -x "$P/python3" ]; then PYTHON_BIN="$P/python3"; break; fi
+done
+[ -n "$PYTHON_BIN" ] || fail "未找到 python3 运行时。请先在应用中心安装 python312，再安装本应用。"
+
+"$PYTHON_BIN" -c "import sqlite3, json, hashlib, zoneinfo" >/dev/null 2>&1 \
+  || fail "python 运行时缺少 sqlite3/json/hashlib/zoneinfo 模块，无法运行本应用。"
+
+# 残留 socket：仅在目录已存在时顺手清理，失败不阻断
+APP_DIR="${TRIM_APPDEST:-/var/apps/${APP_NAME}/target}"
+if [ -d "$APP_DIR" ] && [ -S "$APP_DIR/app.sock" ]; then
+  rm -f "$APP_DIR/app.sock" 2>/dev/null || true
+fi
+
+exit 0

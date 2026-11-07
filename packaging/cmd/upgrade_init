@@ -1,0 +1,18 @@
+#!/bin/bash
+# 升级前：停止服务并备份当前数据库
+set -u
+
+APP_NAME="ship-pms"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/${APP_NAME}/var}"
+DB_FILE="${VAR_DIR}/data/pms.db"
+
+CMD_DIR="/var/apps/${TRIM_APPNAME:-$APP_NAME}/cmd"
+[ -f "$CMD_DIR/main" ] || CMD_DIR="${TRIM_APPDEST%/}/../cmd"
+[ -f "$CMD_DIR/main" ] && bash "$CMD_DIR/main" stop
+
+if [ -f "$DB_FILE" ]; then
+  mkdir -p "$VAR_DIR/backups" 2>/dev/null || true
+  cp "$DB_FILE" "$VAR_DIR/backups/pre-upgrade-$(date +%Y%m%d-%H%M%S).db" 2>/dev/null || true
+fi
+
+exit 0

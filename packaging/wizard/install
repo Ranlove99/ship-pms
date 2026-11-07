@@ -1,0 +1,95 @@
+[
+  {
+    "stepTitle": "船舶信息",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "<p>填写本船资料，将用于证书清单、检查包封面与导出文件。全部可在安装后于「设置」中修改。</p><p style=\"color:#46606E;font-size:12px\">系统会预置散货船的设备树、维护计划与证书骨架。这些是行业通行值，<b>装船后必须由轮机长按实船手册逐条核对</b>。</p>"
+      },
+      {
+        "type": "text",
+        "field": "wizard_vessel_name",
+        "label": "船名",
+        "initValue": "",
+        "rules": [
+          { "type": "required", "message": "请填写船名" },
+          { "type": "max", "value": 64, "message": "不超过 64 个字符" }
+        ]
+      },
+      {
+        "type": "text",
+        "field": "wizard_imo",
+        "label": "IMO 编号",
+        "initValue": "",
+        "rules": [
+          { "type": "pattern", "value": "^[0-9]{7}$", "message": "IMO 为 7 位数字，可留空" }
+        ]
+      },
+      {
+        "type": "text",
+        "field": "wizard_flag",
+        "label": "船旗",
+        "initValue": "中国",
+        "rules": []
+      },
+      {
+        "type": "text",
+        "field": "wizard_class_society",
+        "label": "船级社",
+        "initValue": "CCS",
+        "rules": []
+      },
+      {
+        "type": "text",
+        "field": "wizard_gt",
+        "label": "总吨 GT",
+        "initValue": "",
+        "rules": []
+      },
+      {
+        "type": "select",
+        "field": "wizard_timezone",
+        "label": "船时区",
+        "initValue": "Asia/Shanghai",
+        "options": [
+          { "label": "Asia/Shanghai", "value": "Asia/Shanghai" },
+          { "label": "Asia/Hong_Kong", "value": "Asia/Hong_Kong" },
+          { "label": "Asia/Singapore", "value": "Asia/Singapore" },
+          { "label": "Asia/Tokyo", "value": "Asia/Tokyo" },
+          { "label": "Europe/London", "value": "Europe/London" },
+          { "label": "Europe/Rotterdam", "value": "Europe/Rotterdam" },
+          { "label": "UTC", "value": "UTC" }
+        ],
+        "rules": []
+      }
+    ]
+  },
+  {
+    "stepTitle": "管理员账号",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "<p>该账号用于本机直连登录，以及未接入飞牛统一网关时的访问。<br>通过应用中心入口打开时，系统会自动识别 NAS 账号。</p><p style=\"color:#46606E;font-size:12px\">口令留空时，安装程序会随机生成并记录到应用日志。</p>"
+      },
+      {
+        "type": "text",
+        "field": "wizard_admin_username",
+        "label": "管理员账号",
+        "initValue": "admin",
+        "rules": [
+          { "type": "required", "message": "请填写管理员账号" },
+          { "type": "pattern", "value": "^[a-zA-Z0-9_.-]{3,32}$", "message": "3-32 位字母、数字或 _ . -" }
+        ]
+      },
+      {
+        "type": "password",
+        "field": "wizard_admin_password",
+        "label": "管理员密码",
+        "initValue": "",
+        "rules": [
+          { "type": "min", "value": 8, "message": "至少 8 位，留空则自动生成" }
+        ]
+      }
+    ]
+  }
+]

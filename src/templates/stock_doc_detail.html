@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.no }} · 库存单据 · 船舶 PMS{% endblock %}
+{% block heading %}{{ doc.no }}{% endblock %}
+{% block subheading %}{{ doc.type_label }} · {{ doc.status_label }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>
+      {{ doc.type_label }}单
+      <span class="badge {{ 'ok' if doc.status == 'posted' else ('neutral' if doc.status == 'cancelled' else 'warn') }}"
+            style="margin-left:8px;vertical-align:middle">{{ doc.status_label }}</span>
+    </h2>
+    <p>
+      {% if doc.status == 'draft' %}草稿状态：可编辑、可过账、可取消。过账后锁定并写入库存流水。
+      {% elif doc.status == 'posted' %}已过账：库存流水已写入，不可修改。纠正请开新单据。
+      {% else %}已取消：未产生任何库存变动。{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('pages.stock_docs', type=doc.type) }}">
+      <svg class="icon icon-sm"><use href="#i-chevron"/></svg>返回列表
+    </a>
+    {% if doc.status == 'draft' %}
+    <button class="btn" data-action="doc-edit" data-id="{{ doc.id }}">
+      <svg class="icon icon-sm"><use href="#i-file"/></svg>编辑
+    </button>
+    <button class="btn danger" data-action="doc-cancel" data-id="{{ doc.id }}" data-no="{{ doc.no }}">取消单据</button>
+    <button class="btn primary" data-action="doc-post" data-id="{{ doc.id }}" data-no="{{ doc.no }}">确认过账</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card section-gap">
+  <div class="card-head">
+    <svg class="icon"><use href="#i-{{ 'doc-in' if doc.type == 'in' else ('doc-out' if doc.type == 'out' else 'doc-check') }}"/></svg>
+    <h3>单据信息</h3>
+  </div>
+  <div class="card-body">
+    <div class="defs">
+      <div><dt>单号</dt><dd class="mono">{{ doc.no }}</dd></div>
+      <div><dt>业务日期</dt><dd class="mono">{{ doc.doc_date }}</dd></div>
+      <div><dt>{{ doc.party_label }}</dt><dd>{{ doc.party or '—' }}</dd></div>
+      <div><dt>引用单号</dt><dd>{{ doc.ref_no or '—' }}</dd></div>
+      {% if doc.type == 'out' %}
+      <div>
+        <dt>关联工单</dt>
+        <dd>
+          {% if doc.wo_id %}
+          <a href="{{ url_for('pages.workorder_detail', wo_id=doc.wo_id) }}" class="mono">WO#{{ doc.wo_id }}</a>
+          {% else %}—{% endif %}
+        </dd>
+      </div>
+      {% endif %}
+      <div><dt>合计数量</dt><dd class="mono">{{ doc.total_qty|num }}</dd></div>
+      <div><dt>合计金额</dt><dd class="mono">{{ doc.total_amount|money }}</dd></div>
+      <div><dt>创建</dt><dd>{{ doc.creator_name or '—' }} · {{ doc.created_at|dt }}</dd></div>
+      <div>
+        <dt>过账</dt>
+        <dd>{% if doc.posted_at %}{{ doc.poster_name or '—' }} · {{ doc.posted_at|dt }}{% else %}—{% endif %}</dd>
+      </div>
+      {% if doc.note %}
+      <div style="grid-column:1/-1"><dt>备注</dt><dd>{{ doc.note }}</dd></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <svg class="icon"><use href="#i-box"/></svg>
+    <h3>单据明细（{{ doc.lines|length }} 行）</h3>
+    {% if doc.type == 'adjust' and doc.status == 'draft' %}
+    <span class="hint">账面数为当前实时库存；有差异的行过账时必须填写原因</span>
+    {% endif %}
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>备件</th><th>规格</th>
+          {% if doc.type == 'adjust' %}
+          <th style="text-align:right">账面</th><th style="text-align:right">实盘</th><th style="text-align:right">差异</th>
+          {% else %}
+          <th style="text-align:right">数量</th><th style="text-align:right">单价</th><th style="text-align:right">金额</th>
+          {% endif %}
+          <th>行备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in doc.lines %}
+        {% set book = l.book_qty if l.book_qty is not none else l.current_on_hand %}
+        {% set variance = l.variance if l.variance is not none else (l.qty - l.current_on_hand) %}
+        <tr class="{{ 'row-warn' if doc.type == 'adjust' and variance != 0 else '' }}">
+          <td>
+            {{ l.part_name }}
+            <span class="sub">{{ l.part_code }}</span>
+          </td>
+          <td style="font-size:12px;color:var(--ink-500)">{{ l.spec or '—' }}</td>
+          {% if doc.type == 'adjust' %}
+          <td class="mono" style="text-align:right">{{ book|num }}</td>
+          <td class="mono" style="text-align:right"><strong>{{ l.qty|num }}</strong></td>
+          <td class="mono" style="text-align:right">
+            {% if variance > 0 %}<span style="color:var(--ok)">+{{ variance|num }}</span>
+            {% elif variance < 0 %}<span style="color:var(--danger)">{{ variance|num }}</span>
+            {% else %}0{% endif %}
+          </td>
+          {% else %}
+          <td class="mono" style="text-align:right">{{ l.qty|num }} <span style="color:var(--ink-300)">{{ l.unit }}</span></td>
+          <td class="mono" style="text-align:right">{{ l.unit_price|money }}</td>
+          <td class="mono" style="text-align:right">{{ (l.qty * l.unit_price)|money }}</td>
+          {% endif %}
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ l.note or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="application/json" id="partsData">{{ parts|tojson }}</script>
+<script type="application/json" id="openWosData">{{ open_wos|tojson }}</script>
+<script type="application/json" id="docData">{{ doc|tojson }}</script>
+{% endblock %}

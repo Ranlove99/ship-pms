@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ code }} · 船舶 PMS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card" style="border-top-color:var(--danger)">
+    <div style="font-family:var(--mono);font-size:34px;font-weight:600;color:var(--danger);line-height:1">{{ code }}</div>
+    <h1 style="margin-top:8px">{{ message }}</h1>
+    <p class="sub" style="margin-bottom:20px">
+      {% if code == 404 %}地址可能已变更，或记录已被删除。
+      {% elif code == 403 %}当前角色没有该操作权限，请联系管理员。
+      {% else %}可尝试返回上一页，或查看应用日志定位原因。{% endif %}
+    </p>
+    <div class="btn-row">
+      <a class="btn primary" href="{{ url_for('pages.index') }}">返回总览</a>
+      <a class="btn" href="javascript:history.back()">上一页</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

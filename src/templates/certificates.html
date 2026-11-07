@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}证书与检验 · 船舶 PMS{% endblock %}
+{% block heading %}证书与检验{% endblock %}
+{% block subheading %}共 {{ items|length }} 份{% endblock %}
+
+{% block content %}
+{% set expired = items | selectattr('state', 'equalto', 'expired') | list %}
+{% set soon = items | selectattr('state', 'equalto', 'soon') | list %}
+
+<div class="page-head">
+  <div>
+    <h2>证书台账</h2>
+    <p>法定证书、船级社证书与检验记录。到期前按提醒天数预警，过期项在总览页置顶。</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('reports_api.certs_csv') }}">
+      <svg class="icon icon-sm"><use href="#i-download"/></svg>导出 CSV
+    </a>
+    <button class="btn primary" data-action="cert-new">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>新增证书
+    </button>
+  </div>
+</div>
+
+<div class="grid grid-4 section-gap">
+  <div class="kpi {{ 'danger' if expired else 'ok' }}">
+    <div class="label">已过期</div>
+    <div class="value">{{ expired|length }}</div>
+    <div class="meta">须立即换证</div>
+  </div>
+  <div class="kpi {{ 'warn' if soon else 'ok' }}">
+    <div class="label">临期</div>
+    <div class="value">{{ soon|length }}</div>
+    <div class="meta">按各证书提醒天数</div>
+  </div>
+  <div class="kpi">
+    <div class="label">有效</div>
+    <div class="value">{{ items|length - expired|length - soon|length }}</div>
+    <div class="meta">含未填到期日</div>
+  </div>
+  <div class="kpi">
+    <div class="label">最近到期</div>
+    <div class="value" style="font-size:19px">
+      {% if soon %}{{ soon | map(attribute='expires_at') | sort | first }}
+      {% elif expired %}{{ expired | map(attribute='expires_at') | sort | last }}
+      {% else %}—{% endif %}
+    </div>
+    <div class="meta">{% if soon %}下一份需续期的证书{% elif expired %}仅剩已过期证书需处理{% else %}无临期证书{% endif %}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>证书名称</th><th>类别</th><th>证书号</th><th>签发机构</th><th>签发</th><th>到期</th><th>状态</th><th>备注</th></tr>
+      </thead>
+      <tbody>
+        {% for c in items %}
+        <tr class="{{ 'row-danger' if c.state == 'expired' else ('row-warn' if c.state == 'soon' else '') }}">
+          <td><strong>{{ c.name }}</strong></td>
+          <td>
+            <span class="badge {{ 'info' if c.category == 'statutory' else ('neutral' if c.category == 'class' else 'neutral') }}">{{ c.category_label }}</span>
+          </td>
+          <td class="mono">{{ c.cert_no or '—' }}</td>
+          <td style="font-size:12px;color:var(--ink-500)">{{ c.issuer or '—' }}</td>
+          <td class="mono">{{ c.issued_at or '—' }}</td>
+          <td class="mono">{{ c.expires_at or '—' }}</td>
+          <td>
+            <span class="badge {{ 'danger' if c.state == 'expired' else ('warn' if c.state == 'soon' else 'ok') }}">{{ c.state_label }}</span>
+          </td>
+          <td style="font-size:11.5px;color:var(--ink-500);max-width:260px">{{ c.remarks or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="notice" style="margin-top:14px">
+  <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+  <div>
+    <b>初始化日期是推算值</b>
+    模板中的签发日与到期日按系统初始化日推算，仅用于展示流程。装船后请按船上实际证书逐条修正，
+    否则提醒会失真。
+  </div>
+</div>
+{% endblock %}

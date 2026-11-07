@@ -1,0 +1,15 @@
+{
+  ".url": {
+    "ship-pms.enter": {
+      "title": "船舶PMS",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "protocol": "",
+      "port": "",
+      "gatewayPrefix": "/app/ship-pms",
+      "gatewaySocket": "app.sock",
+      "url": "/app/ship-pms",
+      "allUsers": true
+    }
+  }
+}

@@ -1,0 +1,20 @@
+# 构建产物 / 可再生产物（由 scripts/build_fpk.sh 生成）
+build/
+*.fpk
+.cache/
+
+# Python 字节码
+__pycache__/
+*.py[cod]
+
+# 运行时数据（本地 SQLite、备份、日志）
+*.db
+*.db-wal
+*.db-shm
+var/
+
+# 编辑器 / 系统
+.DS_Store
+*.swp
+.idea/
+.vscode/

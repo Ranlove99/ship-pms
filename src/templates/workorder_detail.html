@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ item.no }} · 工单{% endblock %}
+{% block heading %}工单 {{ item.no }}{% endblock %}
+{% block subheading %}{{ item.status_label }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ item.title }}</h2>
+    <p>
+      <a href="{{ url_for('pages.asset_detail', asset_id=item.asset_id) }}">{{ item.asset_code }} · {{ item.asset_name }}</a>
+      <span class="badge neutral" style="margin-left:6px">{{ item.type_label }}</span>
+      <span class="badge {{ 'danger' if item.priority == 'critical' else ('warn' if item.priority == 'high' else 'neutral') }}" style="margin-left:4px">{{ item.priority_label }}</span>
+      <span class="badge {{ 'ok' if item.status == 'verified' else ('info' if item.status in ('in_progress','done') else 'accent') }}" style="margin-left:4px">{{ item.status_label }}</span>
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if item.status == 'open' %}
+      <button class="btn primary" data-action="wo-start" data-id="{{ item.id }}">开始执行</button>
+      <button class="btn" data-action="wo-cancel" data-id="{{ item.id }}">取消工单</button>
+    {% elif item.status == 'in_progress' %}
+      <button class="btn primary" data-action="wo-complete" data-id="{{ item.id }}" data-hours="{{ item.asset_hours }}">提交完成</button>
+      <button class="btn" data-action="wo-cancel" data-id="{{ item.id }}">取消工单</button>
+    {% elif item.status == 'done' %}
+      <button class="btn primary" data-action="wo-verify" data-id="{{ item.id }}">验收</button>
+    {% endif %}
+    <a class="btn ghost" href="{{ url_for('pages.workorders') }}">返回列表</a>
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <div class="card section-gap">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-clipboard"/></svg>
+        <h3>检查项</h3>
+        <span class="hint" id="checkProgressText">{{ item.checklist_done }} / {{ item.checklist_total }}</span>
+      </div>
+      <div class="card-body">
+        <div class="progress" style="margin-bottom:12px">
+          <span id="checkProgress" style="width: {{ (item.checklist_done / item.checklist_total * 100) if item.checklist_total else 0 }}%"></span>
+        </div>
+        {% if item.checklist %}
+        <div class="checklist">
+          {% for c in item.checklist %}
+          <label class="check-row {{ 'done' if c.done }}">
+            <input type="checkbox" data-action="check-toggle" data-wo="{{ item.id }}" data-item="{{ c.id }}"
+              {{ 'checked' if c.done }} {{ 'disabled' if item.status in ('verified','cancelled') }}>
+            <span class="idx">{{ '%02d'|format(c.seq) }}</span>
+            <span class="txt">{{ c.text }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">本工单没有预设检查项，按实际情况执行并在完成说明中记录。</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card section-gap">
+      <div class="card-head">
+        <svg class="icon"><use href="#i-box"/></svg>
+        <h3>领用备件</h3>
+        {% if item.status not in ('verified','cancelled') %}
+        <button class="btn sm" data-action="wo-add-spare" data-id="{{ item.id }}" style="margin-left:auto">领料</button>
+        {% endif %}
+      </div>
+      {% if item.spares %}
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>备件</th><th>编码</th><th style="text-align:right">数量</th></tr></thead>
+          <tbody>
+            {% for s in item.spares %}
+            <tr>
+              <td>{{ s.part_name }}</td>
+              <td class="mono">{{ s.part_code }}</td>
+              <td class="mono" style="text-align:right">{{ s.qty|num }} {{ s.unit }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body"><div class="empty">本次未领用备件</div></div>
+      {% endif %}
+    </div>
+
+    {% if item.defects %}
+    <div class="card">
+      <div class="card-head"><svg class="icon"><use href="#i-alert"/></svg><h3>关联缺陷</h3></div>
+      <div class="list">
+        {% for d in item.defects %}
+        <div class="list-item">
+          <div class="grow">
+            <div class="title">{{ d.no }} · {{ d.description }}</div>
+          </div>
+          <div class="tail">{{ d.status }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card section-gap">
+      <div class="card-head"><h3>工单信息</h3></div>
+      <div class="card-body">
+        <dl class="defs" style="grid-template-columns:1fr 1fr">
+          <div class="d"><dt>设备</dt><dd>{{ item.asset_code }}</dd></div>
+          <div class="d"><dt>类型</dt><dd>{{ item.type_label }}</dd></div>
+          <div class="d"><dt>到期日</dt><dd class="mono">{{ item.due_at or '—' }}</dd></div>
+          <div class="d"><dt>创建</dt><dd class="mono">{{ item.created_at|dt }}</dd></div>
+          <div class="d"><dt>开始</dt><dd class="mono">{{ item.started_at|dt if item.started_at else '—' }}</dd></div>
+          <div class="d"><dt>完成</dt><dd class="mono">{{ item.completed_at|dt if item.completed_at else '—' }}</dd></div>
+          <div class="d"><dt>完成时小时</dt><dd class="mono">{{ item.running_hours_at_done|num if item.running_hours_at_done is not none else '—' }}</dd></div>
+          <div class="d"><dt>工时</dt><dd class="mono">{{ item.man_hours|num if item.man_hours is not none else '—' }}</dd></div>
+          <div class="d"><dt>验收</dt><dd class="mono">{{ item.verified_at|dt if item.verified_at else '—' }}</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    {% if item.description %}
+    <div class="card section-gap">
+      <div class="card-head"><h3>说明</h3></div>
+      <div class="card-body" style="font-size:12.5px;color:var(--ink-700);white-space:pre-wrap">{{ item.description }}</div>
+    </div>
+    {% endif %}
+
+    {% if item.remarks %}
+    <div class="card section-gap">
+      <div class="card-head"><h3>执行记录</h3></div>
+      <div class="card-body" style="font-size:12.5px;color:var(--ink-700);white-space:pre-wrap">{{ item.remarks }}</div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><svg class="icon"><use href="#i-layers"/></svg><h3>状态流转</h3></div>
+      <div class="card-body">
+        <div class="timeline">
+          <div class="tl-item ok">
+            <div class="when">{{ item.created_at|dt }}</div>
+            <div>创建工单{% if item.plan_id %} · 来自维护计划{% endif %}</div>
+          </div>
+          {% if item.started_at %}
+          <div class="tl-item"><div class="when">{{ item.started_at|dt }}</div><div>开始执行</div></div>
+          {% endif %}
+          {% if item.completed_at %}
+          <div class="tl-item warn"><div class="when">{{ item.completed_at|dt }}</div><div>提交完成，等待验收</div></div>
+          {% endif %}
+          {% if item.verified_at %}
+          <div class="tl-item ok"><div class="when">{{ item.verified_at|dt }}</div><div>轮机长验收，已写入设备历史</div></div>
+          {% endif %}
+          {% if not item.started_at and not item.completed_at and item.status == 'open' %}
+          <div class="tl-item"><div class="when">待处理</div><div>等待开始</div></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="partsData">[
+{%- for p in parts -%}
+{"id":{{ p.id }},"code":{{ p.code|tojson }},"name":{{ p.name|tojson }},"available":{{ p.available }},"unit":{{ p.unit|tojson }}}{% if not loop.last %},{% endif %}
+{%- endfor -%}
+]</script>
+{% endblock %}

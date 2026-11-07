@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}电子记录簿 · 船舶 PMS{% endblock %}
+{% block heading %}电子记录簿{% endblock %}
+{% block subheading %}{{ book.title if book else '—' }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ book.title if book else '未选择记录簿' }}</h2>
+    <p>
+      {% if book %}
+      {{ book.regulation_ref }}
+      <span class="badge info" style="margin-left:6px">追加式记录</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if book %}
+    <a class="btn" href="{{ url_for('records_api.export_csv', code=book.code) }}">
+      <svg class="icon icon-sm"><use href="#i-download"/></svg>导出 CSV
+    </a>
+    <button class="btn primary" data-action="record-add" data-book="{{ book.code }}">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>新增记录
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="segmented section-gap" style="display:inline-flex;flex-wrap:wrap">
+  {% for b in books %}
+  <a href="{{ url_for('pages.records', code=b.code) }}" class="{{ 'on' if book and b.code == book.code }}">
+    {{ b.title }}
+    {% if b.pending %}<span class="badge warn" style="margin-left:5px">{{ b.pending }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if book %}
+<div class="grid grid-3 section-gap">
+  <div class="kpi">
+    <div class="label">记录条数</div>
+    <div class="value">{{ entries|length }}</div>
+    <div class="meta">本簿累计</div>
+  </div>
+  <div class="kpi warn">
+    <div class="label">待核签</div>
+    <div class="value">{{ entries | selectattr('status', 'equalto', 'submitted') | list | length }}</div>
+    <div class="meta">需船长签署</div>
+  </div>
+  <div class="kpi {{ 'ok' if book.chain_ok else 'danger' }}">
+    <div class="label">哈希链</div>
+    <div class="value" style="font-size:20px">{{ '完整' if book.chain_ok else '异常' }}</div>
+    <div class="meta">SHA-256 逐条链接</div>
+  </div>
+</div>
+
+<div class="notice">
+  <svg class="icon icon-sm"><use href="#i-lock"/></svg>
+  <div>
+    <b>核签后不可修改</b>
+    记录一经船长核签即锁定；需要更正时走「更正」流程，系统会新增一条记录并用 <code style="font-family:var(--mono)">amends_seq</code> 指回原条目，原条目保留。
+    本机制符合 IMO 电子记录簿导则（MEPC.312(74) / MEPC.372(80)）对不可篡改与更正留痕的要求。
+    <span style="color:var(--danger)">正式替代纸质记录仍须经船旗国主管机关或授权 RO 批准并签发声明。</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>记录明细</h3>
+    <span class="hint">共 {{ entries|length }} 条，按序号倒序</span>
+  </div>
+  {% if entries %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="width:56px">序号</th><th>时间（船时）</th><th>类型</th><th>内容</th>
+          <th>状态</th><th>记录人</th><th>核签人</th><th style="text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr class="{{ 'row-warn' if e.status == 'submitted' else '' }}">
+          <td class="mono">{{ '%04d'|format(e.seq) }}</td>
+          <td class="mono">{{ e.occurred_at_utc|dt }}</td>
+          <td>{{ e.entry_type }}</td>
+          <td style="max-width:420px">
+            <div class="rec-fields">
+              {% for p in e.particulars_display %}
+              <span class="rec-item"><em>{{ p.label }}</em>{{ p.value }}</span>
+              {% endfor %}
+            </div>
+            {% if e.amends_seq %}
+            <span class="sub">更正第 {{ '%04d'|format(e.amends_seq) }} 条{% if e.particulars.get('_amendment_reason') %} · 原因：{{ e.particulars.get('_amendment_reason') }}{% endif %}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'ok' if e.status == 'verified' else ('warn' if e.status == 'submitted' else ('info' if e.status == 'amended' else 'neutral')) }}">{{ e.status_label }}</span>
+          </td>
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ e.officer_name or '—' }}</td>
+          <td style="font-size:11.5px;color:var(--ink-500)">{{ e.master_name or '—' }}</td>
+          <td style="text-align:right;white-space:nowrap">
+            {% if e.status == 'draft' %}
+              <button class="btn sm" data-action="record-submit" data-id="{{ e.id }}">提交</button>
+            {% elif e.status == 'submitted' %}
+              <button class="btn sm primary" data-action="record-verify" data-id="{{ e.id }}">核签</button>
+            {% elif e.status == 'verified' %}
+              <button class="btn ghost sm" data-action="record-amend" data-id="{{ e.id }}">更正</button>
+            {% else %}
+              <span class="badge neutral">已锁定</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <div class="empty">
+      <b>本簿还没有记录</b>
+      按实际作业情况录入。记录应逐次填写并在当班结束前提交核签。
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script type="application/json" id="bookTypes">{{ book.entry_types|tojson }}</script>
+{% endif %}
+{% endblock %}

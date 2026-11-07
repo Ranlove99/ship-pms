@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}缺陷 · 船舶 PMS{% endblock %}
+{% block heading %}缺陷与不符合项{% endblock %}
+{% block subheading %}未关闭 {{ items | rejectattr('status', 'equalto', 'closed') | list | length }} 项{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>缺陷台账</h2>
+    <p>ISM Code 要求不符合须报告、分析可能原因、采取纠正措施并保留记录。关闭时必须填写纠正措施。</p>
+  </div>
+  <div class="page-actions">
+    <div class="segmented">
+      <a href="{{ url_for('pages.defects') }}" class="{{ 'on' if not status }}">全部</a>
+      <a href="{{ url_for('pages.defects', status='open') }}" class="{{ 'on' if status == 'open' }}">未关闭</a>
+      <a href="{{ url_for('pages.defects', status='closed') }}" class="{{ 'on' if status == 'closed' }}">已关闭</a>
+    </div>
+    <button class="btn primary" data-action="defect-new">
+      <svg class="icon icon-sm"><use href="#i-plus"/></svg>报告缺陷
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  {% if items %}
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>编号</th><th>设备</th><th>描述</th><th>严重度</th><th>状态</th><th>发现</th><th>工单</th><th style="text-align:right">操作</th></tr>
+      </thead>
+      <tbody>
+        {% for d in items %}
+        <tr class="{{ 'row-danger' if d.severity == 'critical' and d.status != 'closed' else '' }}">
+          <td class="mono">{{ d.no }}</td>
+          <td>
+            {{ d.asset_name or '—' }}
+            <span class="sub">{{ d.asset_code or '' }}</span>
+          </td>
+          <td style="max-width:420px">
+            {{ d.description }}
+            {% if d.corrective_action %}<span class="sub">纠正：{{ d.corrective_action }}</span>{% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'danger' if d.severity == 'critical' else ('warn' if d.severity == 'major' else 'neutral') }}">{{ d.severity_label }}</span>
+          </td>
+          <td>
+            <span class="badge {{ 'ok' if d.status == 'closed' else ('info' if d.status in ('in_progress','fixed') else 'accent') }}">{{ d.status_label }}</span>
+          </td>
+          <td class="mono">{{ d.found_at[:10] }}<span class="sub">{{ d.found_by_name or '' }}</span></td>
+          <td class="mono">
+            {% if d.wo_id %}
+            <a href="{{ url_for('pages.workorder_detail', wo_id=d.wo_id) }}">{{ d.wo_no }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="text-align:right;white-space:nowrap">
+            {% if d.status != 'closed' %}
+              {% if not d.wo_id %}
+              <button class="btn sm" data-action="defect-to-wo" data-id="{{ d.id }}">转工单</button>
+              {% endif %}
+              <button class="btn sm primary" data-action="defect-close" data-id="{{ d.id }}">关闭</button>
+            {% else %}
+              <span class="badge neutral">已闭环</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body"><div class="empty"><b>没有缺陷记录</b>发现缺陷时立即记录，比事后回忆更有价值。</div></div>
+  {% endif %}
+</div>
+
+<script type="application/json" id="assetsData">[{% for a in assets %}{"id":{{ a.id }},"label":{{ (a.code ~ ' · ' ~ a.name)|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+{% endblock %}

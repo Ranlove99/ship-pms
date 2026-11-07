@@ -1,0 +1,111 @@
+#!/bin/bash
+# 解压之后执行：目录此时由系统创建完毕，这里只补建缺失项并初始化数据。
+set -u
+
+APP_NAME="ship-pms"
+APP_DIR="${TRIM_APPDEST:-/var/apps/${APP_NAME}/target}"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/${APP_NAME}/var}"
+ETC_DIR="${TRIM_PKGETC:-/var/apps/${APP_NAME}/etc}"
+LOG_FILE="${VAR_DIR}/app.log"
+
+PYTHON_BIN=""
+for P in /var/apps/python312/target/bin /usr/local/bin /usr/bin; do
+  if [ -x "$P/python3" ]; then PYTHON_BIN="$P/python3"; break; fi
+done
+
+user_msg() {
+  echo "$1" >> "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+}
+
+die() {
+  user_msg "$1"
+  user_msg "详细诊断已写入应用日志：${LOG_FILE}"
+  mkdir -p "$VAR_DIR" 2>/dev/null || true
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - INSTALL FAILED: $1" >> "$LOG_FILE" 2>/dev/null || true
+  exit 1
+}
+
+# 目录就绪 + 可写校验（失败时给出可执行的处置建议）
+ensure_dir() {
+  local dir="$1" label="$2"
+  [ -d "$dir" ] || mkdir -p "$dir" 2>/dev/null || true
+
+  if [ ! -d "$dir" ]; then
+    {
+      echo "无法创建${label}：$dir"
+      echo "运行用户：$(id -un 2>/dev/null) (uid=$(id -u 2>/dev/null))"
+      echo "上级目录状态：$(ls -ld "$(dirname "$dir")" 2>&1)"
+      echo "若此前安装失败留下过 root 属主的空目录，请先执行："
+      echo "  sudo rm -rf $dir"
+      echo "然后在应用中心重新安装。"
+    } >> "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - cannot create $dir (user=$(id -un 2>/dev/null))" >> "$LOG_FILE" 2>/dev/null || true
+    ls -ld "$(dirname "$dir")" >> "$LOG_FILE" 2>/dev/null || true
+    exit 1
+  fi
+
+  if [ ! -w "$dir" ]; then
+    local owner
+    owner="$(ls -ld "$dir" 2>/dev/null | awk '{print $3":"$4}')"
+    {
+      echo "${label}不可写：$dir"
+      echo "当前用户：$(id -un 2>/dev/null)　目录属主：${owner:-未知}"
+      echo "处置方式（任选其一）："
+      echo "  1) sudo chown -R ${TRIM_USERNAME:-$APP_NAME}:${TRIM_GROUPNAME:-$APP_NAME} $dir"
+      echo "  2) sudo rm -rf $dir  然后重新安装"
+    } >> "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - not writable: $dir (user=$(id -un 2>/dev/null), owner=$owner)" >> "$LOG_FILE" 2>/dev/null || true
+    exit 1
+  fi
+}
+
+ensure_dir "$VAR_DIR" "数据目录"
+ensure_dir "$ETC_DIR" "配置目录"
+
+# 包完整性（解压后才可校验）
+[ -f "$APP_DIR/wsgi.py" ] || die "应用文件缺失：wsgi.py"
+[ -d "$APP_DIR/vendor" ] || die "依赖目录缺失：vendor"
+[ -f "$APP_DIR/app.py" ] || die "应用文件缺失：app.py"
+
+VESSEL_NAME="${wizard_vessel_name:-}"
+IMO="${wizard_imo:-}"
+FLAG="${wizard_flag:-}"
+CLASS_SOCIETY="${wizard_class_society:-}"
+GT="${wizard_gt:-0}"
+TIMEZONE="${wizard_timezone:-Asia/Shanghai}"
+ADMIN_USER="${wizard_admin_username:-admin}"
+ADMIN_PASS="${wizard_admin_password:-}"
+
+if [ -z "$ADMIN_PASS" ]; then
+  ADMIN_PASS="$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 12)"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - 已生成管理员口令：${ADMIN_PASS}" >> "$LOG_FILE"
+fi
+
+cd "$APP_DIR" || die "无法进入应用目录：$APP_DIR"
+export PYTHONPATH="$APP_DIR/vendor:$APP_DIR"
+export PYTHONDONTWRITEBYTECODE=1
+
+SEED_OUT="$("$PYTHON_BIN" -m db.seed \
+  "vessel_name=${VESSEL_NAME}" "imo=${IMO}" "flag=${FLAG}" \
+  "class_society=${CLASS_SOCIETY}" "gt=${GT}" "timezone=${TIMEZONE}" \
+  "admin_username=${ADMIN_USER}" "admin_password=${ADMIN_PASS}" 2>&1)"
+SEED_RC=$?
+echo "$(date '+%Y-%m-%d %H:%M:%S') - seed: $SEED_OUT" >> "$LOG_FILE"
+[ $SEED_RC -eq 0 ] || die "数据库初始化失败：$SEED_OUT"
+
+CMD_DIR="/var/apps/${TRIM_APPNAME:-$APP_NAME}/cmd"
+if [ ! -f "$CMD_DIR/main" ]; then
+  CMD_DIR="${TRIM_APPDEST%/}/../cmd"
+fi
+[ -f "$CMD_DIR/main" ] || die "找不到生命周期脚本：$CMD_DIR/main"
+chmod +x "$CMD_DIR/main" 2>/dev/null || true
+bash "$CMD_DIR/main" start
+
+{
+  echo "船舶 PMS 安装完成。"
+  echo "管理员账号：${ADMIN_USER}"
+  echo "初始口令：${ADMIN_PASS}"
+  echo "请首次登录后在「设置 → 账号」中修改口令。"
+} >> "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+
+exit 0

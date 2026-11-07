@@ -1,0 +1,16 @@
+appname = ship-pms
+version = 1.2.0
+display_name = 船舶PMS
+desc = 船舶计划维护与合规记录系统。<br>设备台账、双触发维护计划、工单闭环、缺陷管理、备件库存、证书预警与电子记录簿。<br>单船离线运行，数据本地留存，全栈纯 Python，x86 与 ARM 通用。
+platform = all
+source = thirdparty
+maintainer = Ranlove99
+distributor = Ranlove99
+install_dep_apps = python312
+os_min_version = 1.1.3100
+ctl_stop = true
+checkport = false
+desktop_uidir = ui
+desktop_applaunchname = ship-pms.enter
+disable_authorization_path = true
+changelog = 1.2.0 备件管理增强：入库/出库/盘库单据化（草稿可编辑、过账锁定写流水、盘库自动快照账面与差异）、供应商台账、补货建议（含导出）、近 90 天消耗分析、库存金额统计、保质期预警、备件档案扩充（供应商/保质期）。
